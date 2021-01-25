@@ -66,7 +66,7 @@ HWND CreateWnd(HINSTANCE hinst)
 
 	if (hwnd == NULL)
 	{
-		//throw std::runtime_error("Can't create window");
+		throw std::runtime_error("Can't create window");
 	}
 
 	const int cxScreen = GetSystemMetrics(SM_CXSCREEN);
@@ -138,12 +138,12 @@ void update(ID3D11Device* device, IDXGISwapChain* swap_chain, ID3D11DeviceContex
 	swap_chain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)(&back_buffer));
 	if (!back_buffer)
 	{
-		//throw std::runtime_error("can't get backbuffer");
+		throw std::runtime_error("can't get backbuffer");
 	}
 	device->CreateRenderTargetView(back_buffer, 0, &render_target_view);
 	if (!render_target_view)
 	{
-		//throw std::runtime_error("can't create RenderTargetView");
+		throw std::runtime_error("can't create RenderTargetView");
 	}
 	context->OMSetRenderTargets(1, &render_target_view, 0);
 	float clear_color[4] = { 0.5f,0.1f,0.1f,0.5f };
