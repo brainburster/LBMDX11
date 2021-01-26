@@ -2,6 +2,9 @@
 #include <d3d11.h>
 #include <tuple>
 #include <stdexcept>
+#include "chaincall.hpp"
+#include "LBM.hpp"
+#include <functional>
 
 #pragma comment(lib,"d3d11.lib")
 
@@ -33,7 +36,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
-HWND CreateWnd(HINSTANCE hinst)
+HWND createWnd(HINSTANCE hinst)
 {
 	// Register the window class.
 	const wchar_t CLASS_NAME[] = L"DX11_LBM_WIN_CLASS";
@@ -84,7 +87,7 @@ HWND CreateWnd(HINSTANCE hinst)
 	return hwnd;
 }
 
-auto CreateDeviceAndSwapChain(HWND hwnd) -> std::tuple<ID3D11Device*, IDXGISwapChain*, ID3D11DeviceContext*>
+auto createDeviceAndSwapChain(HWND hwnd) -> std::tuple<ID3D11Device*, IDXGISwapChain*, ID3D11DeviceContext*>
 {
 	D3D_FEATURE_LEVEL featureLevel;
 	ID3D11Device* device;
@@ -131,7 +134,7 @@ auto CreateDeviceAndSwapChain(HWND hwnd) -> std::tuple<ID3D11Device*, IDXGISwapC
 	return std::forward_as_tuple(device, swap_chain, context);
 }
 
-void update(ID3D11Device* device, IDXGISwapChain* swap_chain, ID3D11DeviceContext* context)
+void draw(ID3D11Device* device, IDXGISwapChain* swap_chain, ID3D11DeviceContext* context)
 {
 	ID3D11RenderTargetView* render_target_view;
 	ID3D11Texture2D* back_buffer;
@@ -153,16 +156,8 @@ void update(ID3D11Device* device, IDXGISwapChain* swap_chain, ID3D11DeviceContex
 	swap_chain->Present(0, 0);
 }
 
-int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, int nCmdSHow)
+void msgLoop(std::function<void()> update)
 {
-	HWND hwnd = CreateWnd(hInst);
-
-	ID3D11Device* device;
-	IDXGISwapChain* swap_chain;
-	ID3D11DeviceContext* context;
-
-	std::tie(device, swap_chain, context) = CreateDeviceAndSwapChain(hwnd);
-
 	MSG msg = { 0 };
 
 	while (WM_QUIT != msg.message)
@@ -174,9 +169,31 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, int nCmdSHow)
 		}
 		else
 		{
-			update(device, swap_chain, context);
+			update();
 		}
 	}
+}
 
-	return msg.wParam;
+int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, int nCmdSHow)
+{
+	using namespace chaincall;
+	using namespace std::placeholders;
+
+	LBM lbm;
+
+	//auto init_lbm = std::bind(&LBM::init, &lbm, _1, _2, _3);
+	auto init_lbm = [&](ID3D11Device* device, IDXGISwapChain* swap_chain, ID3D11DeviceContext* context) {return lbm.init(device, swap_chain, context); };
+	auto get_lbm_process = [&] { return std::bind(&LBM::process, &lbm); };
+	auto app_process = pipe() >> createWnd >> createDeviceAndSwapChain >> init_lbm >> get_lbm_process >> msgLoop;
+
+	try
+	{
+		app_process(hInst);
+	}
+	catch (const std::exception& e)
+	{
+		MessageBoxA(NULL, e.what(), "error", MB_OK);
+	}
+
+	return 0;
 }
