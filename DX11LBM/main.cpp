@@ -5,14 +5,10 @@
 #include "chaincall.hpp"
 #include "LBM.hpp"
 #include <functional>
+#include "header.hpp"
 
 #pragma comment(lib,"d3d11.lib")
-
-enum class EWndSize : int
-{
-	width = 800,
-	height = 600
-};
+#pragma comment(lib,"d3dcompiler.lib")
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -107,6 +103,7 @@ auto createDeviceAndSwapChain(HWND hwnd) -> std::tuple<ID3D11Device*, IDXGISwapC
 	swap_chain_desc.SampleDesc.Quality = 0;
 
 	swap_chain_desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+
 	swap_chain_desc.BufferCount = 1;
 	swap_chain_desc.OutputWindow = hwnd;
 	swap_chain_desc.Windowed = true;
@@ -134,28 +131,6 @@ auto createDeviceAndSwapChain(HWND hwnd) -> std::tuple<ID3D11Device*, IDXGISwapC
 	return std::forward_as_tuple(device, swap_chain, context);
 }
 
-void draw(ID3D11Device* device, IDXGISwapChain* swap_chain, ID3D11DeviceContext* context)
-{
-	ID3D11RenderTargetView* render_target_view;
-	ID3D11Texture2D* back_buffer;
-	swap_chain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)(&back_buffer));
-	if (!back_buffer)
-	{
-		throw std::runtime_error("can't get backbuffer");
-	}
-	device->CreateRenderTargetView(back_buffer, 0, &render_target_view);
-	if (!render_target_view)
-	{
-		throw std::runtime_error("can't create RenderTargetView");
-	}
-	context->OMSetRenderTargets(1, &render_target_view, 0);
-	float clear_color[4] = { 0.5f,0.1f,0.1f,0.5f };
-	context->ClearRenderTargetView(render_target_view, clear_color);
-	back_buffer->Release();
-
-	swap_chain->Present(0, 0);
-}
-
 void msgLoop(std::function<void()> update)
 {
 	MSG msg = { 0 };
@@ -174,7 +149,7 @@ void msgLoop(std::function<void()> update)
 	}
 }
 
-int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, int nCmdSHow)
+int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPreInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
 {
 	using namespace chaincall;
 	using namespace std::placeholders;
@@ -182,13 +157,14 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, int nCmdSHow)
 	LBM lbm;
 
 	//auto init_lbm = std::bind(&LBM::init, &lbm, _1, _2, _3);
-	auto init_lbm = [&](ID3D11Device* device, IDXGISwapChain* swap_chain, ID3D11DeviceContext* context) {return lbm.init(device, swap_chain, context); };
+	auto init_lbm = [&](ID3D11Device* device, IDXGISwapChain* swap_chain, ID3D11DeviceContext* context) { return lbm.init(device, swap_chain, context); };
 	auto get_lbm_process = [&] { return std::bind(&LBM::process, &lbm); };
 	auto app_process = pipe() >> createWnd >> createDeviceAndSwapChain >> init_lbm >> get_lbm_process >> msgLoop;
 
 	try
 	{
-		app_process(hInst);
+		std::function<int(int, int)> test = [](int a, int b) {return a + b; };
+		app_process(hInstance);
 	}
 	catch (const std::exception& e)
 	{
