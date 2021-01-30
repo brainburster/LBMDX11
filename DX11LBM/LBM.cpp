@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include "InputManager.h"
 #include "header.hpp"
-
+#include <list>
 //#pragma comment(lib,"dinput8.lib")
 //#pragma comment(lib,"dxguid.lib")
 
@@ -32,6 +32,15 @@ private:
 	D3D11_MAPPED_SUBRESOURCE ms0;
 	ID3D11UnorderedAccessView* tex1_uav;
 	ID3D11ComputeShader* cs;
+
+	struct Spot
+	{
+		Pos pos;
+		UINT size;
+		BYTE color[4];
+	};
+
+	std::list<Spot> point_buffer;
 };
 
 LBM::LBM() : pimpl{ new LBM::IMPL{} }
@@ -155,32 +164,49 @@ void LBM::IMPL::draw()
 
 void LBM::IMPL::handleInput()
 {
+	static bool last_lbtn_down = false;
 	InputManager& input = InputManager::getInstance();
+
 	if (input.mouseBtnDown(0))
 	{
-		if (FAILED(context->Map(tex0, 0, D3D11_MAP_WRITE_DISCARD, 0, &ms0)))
-		{
-			throw std::runtime_error("Failed to Map");
-		}
-		BYTE* pRow = (BYTE*)ms0.pData;
-		const BYTE data = (BYTE)255;
-		int x = 0;
-		int y = 0;
-		std::tie(x, y) = input.getMousePos();
-		for (size_t i = 0; i < 4; i++)
-		{
-			for (size_t j = 0; j < 4; j++)
-			{
-				size_t index = ms0.RowPitch * (y + i) + (x + j) * 4;
-				memcpy(pRow + index, &data, sizeof(data));
-			}
-		}
-		context->Unmap(tex0, 0);
-		//...
+		const Pos pos = input.getMousePos();
+		point_buffer.push_back({ pos,5,{233,233,233,255} });
+	}
+
+	if (input.mouseBtnDown(2))
+	{
+		const Pos pos = input.getMousePos();
+		point_buffer.push_back({ pos,10,{0,0,0,0} });
 	}
 }
-#include<random>
-#include<chrono>
+
 void LBM::IMPL::update()
 {
+	if (FAILED(context->Map(tex0, 0, D3D11_MAP_WRITE_DISCARD, 0, &ms0)))
+	{
+		throw std::runtime_error("Failed to Map");
+	}
+
+	BYTE* p_data = (BYTE*)ms0.pData;
+	int x = 0;
+	int y = 0;
+
+	for (const Spot& spot : point_buffer)
+	{
+		std::tie(x, y) = spot.pos;
+		const int size = spot.size;
+		for (size_t i = 0; i < size; i++)
+		{
+			for (size_t j = 0; j < size; j++)
+			{
+				size_t index = ms0.RowPitch * (y + i) + (x + j) * 4;
+				memcpy(p_data + index, &spot.color, sizeof(BYTE) * 4);
+			}
+		}
+	}
+
+	point_buffer.clear();
+
+	context->Unmap(tex0, 0);
+	//...
 }
