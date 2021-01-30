@@ -3,12 +3,13 @@
 #include <d3dcompiler.h>
 #include <DirectXMath.h>
 #include <stdexcept>
+#include <list>
+#include <wrl/client.h>
 #include "InputManager.h"
 #include "header.hpp"
-#include <list>
 
 using namespace DirectX;
-
+using namespace Microsoft::WRL;
 struct LBM::IMPL
 {
 public:
@@ -16,21 +17,30 @@ public:
 	IDXGISwapChain* swap_chain;
 	ID3D11DeviceContext* context;
 	void init();
+	void createUAV1();
+	void createTex1();
+	void createSRV0();
+	void createTex0();
+	void createCS0();
+	void getBackBufferRTV();
+	void getBackBuffer();
 	void process();
 private:
 	void draw();
 	void handleInput();
 	void draw_point();
 	void update();
-
+	void clear();
 	ID3D11Texture2D* back_buffer;
 	ID3D11RenderTargetView* back_buffer_rtv;
+
 	ID3D11Texture2D* tex0;
 	ID3D11Texture2D* tex1;
+	ID3D11ShaderResourceView* srv0;
 
 	D3D11_MAPPED_SUBRESOURCE ms0;
 	ID3D11UnorderedAccessView* tex1_uav;
-	ID3D11ComputeShader* cs;
+	ID3D11ComputeShader* cs0;
 
 	struct Spot
 	{
@@ -81,48 +91,36 @@ void LBM::IMPL::init()
 {
 	//init back_buffer_render_target_view
 
-	if (FAILED(swap_chain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)(&back_buffer))))
-	{
-		throw std::runtime_error("Failed to get backbuffer");
-	}
-
-	if (FAILED(device->CreateRenderTargetView(back_buffer, 0, &back_buffer_rtv)))
-	{
-		throw std::runtime_error("Failed to create RenderTargetView");
-	}
-
-	context->OMSetRenderTargets(1, &back_buffer_rtv, 0);
-	//back_buffer->Release();
-	float clear_color[4] = { 0.1f,0.1f,0.5f,0.5f };
-	context->ClearRenderTargetView(back_buffer_rtv, clear_color);
+	getBackBuffer();
+	getBackBufferRTV();
 
 	//创建计算着色器
-	ID3DBlob* blob;
-	D3DReadFileToBlob(L"test.cso", &blob);
+	createCS0();
 
-	if (FAILED(device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, &cs)))
+	//创建纹理0, cpu可读写，用于鼠标描绘
+	createTex0();
+	createSRV0();
+
+	//创建纹理1，Gpu可读写，用于输出
+	createTex1();
+	createUAV1();
+}
+
+void LBM::IMPL::createUAV1()
+{
+	D3D11_UNORDERED_ACCESS_VIEW_DESC desc_uav1 = {};
+	desc_uav1.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc_uav1.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+	desc_uav1.Texture2D.MipSlice = 0;
+
+	if (FAILED(device->CreateUnorderedAccessView(tex1, &desc_uav1, &tex1_uav)))
 	{
-		throw std::runtime_error("Failed to create compute shader");
+		throw std::runtime_error("Failed to create unordered access view");
 	}
-	//创建纹理0以及MappedResouce
-	D3D11_TEXTURE2D_DESC desc_tex0 = { 0 };
-	desc_tex0.Width = EWndSize::width;
-	desc_tex0.Height = EWndSize::height;
-	desc_tex0.ArraySize = 1;
-	desc_tex0.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	desc_tex0.Usage = D3D11_USAGE_DYNAMIC;
-	desc_tex0.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-	desc_tex0.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	desc_tex0.MiscFlags = 0;
-	desc_tex0.MipLevels = 1;
-	desc_tex0.SampleDesc.Count = 1;
+}
 
-	if (FAILED(device->CreateTexture2D(&desc_tex0, 0, &tex0)))
-	{
-		throw std::runtime_error("Failed to create tex0");
-	}
-
-	//创建纹理1以及UAV
+void LBM::IMPL::createTex1()
+{
 	D3D11_TEXTURE2D_DESC desc_tex1 = { 0 };
 	desc_tex1.Width = EWndSize::width;
 	desc_tex1.Height = EWndSize::height;
@@ -140,26 +138,82 @@ void LBM::IMPL::init()
 	{
 		throw std::runtime_error("Failed to create tex1");
 	}
+}
 
-	D3D11_UNORDERED_ACCESS_VIEW_DESC desc_uav1 = { };
-	desc_uav1.Format = desc_tex1.Format;
-	desc_uav1.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
-	desc_uav1.Texture2D.MipSlice = 0;
+void LBM::IMPL::createSRV0()
+{
+	D3D11_SHADER_RESOURCE_VIEW_DESC desc_srv0 = {};
+	desc_srv0.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc_srv0.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	desc_srv0.Texture2D.MipLevels = 1;
+	desc_srv0.Texture2D.MostDetailedMip = 0;
 
-	if (FAILED(device->CreateUnorderedAccessView(tex1, &desc_uav1, &tex1_uav)))
+	if (FAILED(device->CreateShaderResourceView(tex0, &desc_srv0, &srv0)))
 	{
-		throw std::runtime_error("Failed to create unordered access view");
+		throw std::runtime_error("Faild to create srv0");
 	}
-	swap_chain->Present(0, 0);
+}
+
+void LBM::IMPL::createTex0()
+{
+	D3D11_TEXTURE2D_DESC desc_tex0 = { 0 };
+	desc_tex0.Width = EWndSize::width;
+	desc_tex0.Height = EWndSize::height;
+	desc_tex0.ArraySize = 1;
+	desc_tex0.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc_tex0.Usage = D3D11_USAGE_DYNAMIC;
+	desc_tex0.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+	desc_tex0.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	desc_tex0.MiscFlags = 0;
+	desc_tex0.MipLevels = 1;
+	desc_tex0.SampleDesc.Count = 1;
+
+	if (FAILED(device->CreateTexture2D(&desc_tex0, 0, &tex0)))
+	{
+		throw std::runtime_error("Failed to create tex0");
+	}
+}
+
+void LBM::IMPL::createCS0()
+{
+	ComPtr<ID3DBlob> blob;
+	D3DReadFileToBlob(L"test.cso", blob.GetAddressOf());
+
+	if (FAILED(device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, &cs0)))
+	{
+		throw std::runtime_error("Failed to create compute shader");
+	}
+}
+
+void LBM::IMPL::getBackBufferRTV()
+{
+	if (FAILED(device->CreateRenderTargetView(back_buffer, 0, &back_buffer_rtv)))
+	{
+		throw std::runtime_error("Failed to create RenderTargetView");
+	}
+
+	//context->OMSetRenderTargets(1, &back_buffer_rtv, 0);
+
+	//float clear_color[4] = { 0.1f,0.1f,0.5f,0.5f };
+	//context->ClearRenderTargetView(back_buffer_rtv, clear_color);
+}
+
+void LBM::IMPL::getBackBuffer()
+{
+	if (FAILED(swap_chain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)(&back_buffer))))
+	{
+		throw std::runtime_error("Failed to get backbuffer");
+	}
 }
 
 void LBM::IMPL::draw()
 {
-	//context->CSSetShader(cs, 0, 0);
-	//context->CSSetUnorderedAccessViews(0u, 1u, &tex1_uav, 0);
-	//context->Dispatch(EWndSize::width, EWndSize::height, 1);
-	//context->CopyResource(back_buffer, tex1);
-	context->CopyResource(back_buffer, tex0);
+	context->CSSetShader(cs0, 0, 0);
+	context->CSGetShaderResources(0, 1, &srv0);
+	context->CSSetUnorderedAccessViews(0, 1, &tex1_uav, 0);
+	context->Dispatch(EWndSize::width, EWndSize::height, 1);
+	context->CopyResource(back_buffer, tex1);
+	//context->CopyResource(back_buffer, tex0);
 	swap_chain->Present(0, 0);
 }
 
@@ -195,6 +249,11 @@ void LBM::IMPL::handleInput()
 void LBM::IMPL::update()
 {
 	draw_point();
+	//...
+}
+
+void LBM::IMPL::clear()
+{
 	//...
 }
 
