@@ -6,6 +6,7 @@
 #include "LBM.hpp"
 #include <functional>
 #include "header.hpp"
+#include "InputManager.h"
 
 #pragma comment(lib,"d3d11.lib")
 #pragma comment(lib,"d3dcompiler.lib")
@@ -14,6 +15,61 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg)
 	{
+	case WM_KEYDOWN:
+	{
+		InputManager::getInstance().setKey(wParam, true);
+		return 0;
+	}
+	case WM_KEYUP:
+	{
+		InputManager::getInstance().setKey(wParam, false);
+		return 0;
+	}
+	case WM_MOUSEMOVE:
+	{
+		InputManager::getInstance().setMousePos(LOWORD(lParam), HIWORD(lParam));
+		return 0;
+	}
+	case WM_MOUSEWHEEL:
+	{
+		return 0;
+	}
+	case WM_LBUTTONDOWN:
+	{
+		InputManager::getInstance().setMousePos(LOWORD(lParam), HIWORD(lParam));
+		InputManager::getInstance().setMouseBtn(0, true);
+		return 0;
+	}
+	case WM_RBUTTONDOWN:
+	{
+		InputManager::getInstance().setMousePos(LOWORD(lParam), HIWORD(lParam));
+		InputManager::getInstance().setMouseBtn(2, true);
+		return 0;
+	}
+	case WM_LBUTTONUP:
+	{
+		InputManager::getInstance().setMousePos(LOWORD(lParam), HIWORD(lParam));
+		InputManager::getInstance().setMouseBtn(0, false);
+		return 0;
+	}
+	case WM_RBUTTONUP:
+	{
+		InputManager::getInstance().setMousePos(LOWORD(lParam), HIWORD(lParam));
+		InputManager::getInstance().setMouseBtn(2, false);
+		return 0;
+	}
+	case WM_MBUTTONDOWN:
+	{
+		InputManager::getInstance().setMousePos(LOWORD(lParam), HIWORD(lParam));
+		InputManager::getInstance().setMouseBtn(1, true);
+		return 0;
+	}
+	case WM_MBUTTONUP:
+	{
+		InputManager::getInstance().setMousePos(LOWORD(lParam), HIWORD(lParam));
+		InputManager::getInstance().setMouseBtn(1, false);
+		return 0;
+	}
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		return 0;
@@ -26,6 +82,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		//FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
 
 		EndPaint(hwnd, &ps);
+		return 0;
 	}
 	return 0;
 	}
@@ -65,21 +122,22 @@ HWND createWnd(HINSTANCE hinst)
 
 	if (hwnd == NULL)
 	{
-		throw std::runtime_error("Can't create window");
+		throw std::runtime_error("Failed to create window");
 	}
 
 	const int cxScreen = GetSystemMetrics(SM_CXSCREEN);
 	const int cyScreen = GetSystemMetrics(SM_CYSCREEN);
 
 	RECT rect;
-	rect.left = (cxScreen - (int)EWndSize::width) / 2;
-	rect.right = (cxScreen + (int)EWndSize::width) / 2;
-	rect.top = (cyScreen - (int)EWndSize::height) / 2;
-	rect.bottom = (cyScreen + (int)EWndSize::height) / 2;
+	rect.left = (cxScreen - EWndSize::width) / 2;
+	rect.right = (cxScreen + EWndSize::width) / 2;
+	rect.top = (cyScreen - EWndSize::height) / 2;
+	rect.bottom = (cyScreen + EWndSize::height) / 2;
 
 	AdjustWindowRectEx(&rect, WS_OVERLAPPEDWINDOW, 0, 0);
 	MoveWindow(hwnd, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, true);
 	ShowWindow(hwnd, SW_SHOW);
+	SetActiveWindow(hwnd);
 	return hwnd;
 }
 
@@ -91,8 +149,8 @@ auto createDeviceAndSwapChain(HWND hwnd) -> std::tuple<ID3D11Device*, IDXGISwapC
 	DXGI_SWAP_CHAIN_DESC swap_chain_desc;
 	IDXGISwapChain* swap_chain;
 
-	swap_chain_desc.BufferDesc.Width = (int)EWndSize::width;
-	swap_chain_desc.BufferDesc.Height = (int)EWndSize::height;
+	swap_chain_desc.BufferDesc.Width = EWndSize::width;
+	swap_chain_desc.BufferDesc.Height = EWndSize::height;
 	swap_chain_desc.BufferDesc.RefreshRate.Numerator = 60;
 	swap_chain_desc.BufferDesc.RefreshRate.Denominator = 1;
 	swap_chain_desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -121,7 +179,7 @@ auto createDeviceAndSwapChain(HWND hwnd) -> std::tuple<ID3D11Device*, IDXGISwapC
 	HRESULT hr = D3D11CreateDeviceAndSwapChain(0, D3D_DRIVER_TYPE_HARDWARE, 0, 0, featureLevels, numFeatureLevels, D3D11_SDK_VERSION, &swap_chain_desc, &swap_chain, &device, &featureLevel, &context);
 	if (FAILED(hr))
 	{
-		throw std::runtime_error("Can't create d3d11 device and swapChain. ");
+		throw std::runtime_error("Failed to create d3d11 device and swapChain. ");
 	}
 	if (featureLevel != D3D_FEATURE_LEVEL_11_0)
 	{
@@ -151,7 +209,6 @@ void msgLoop(std::function<void()> update)
 
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPreInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
 {
-	using namespace chaincall;
 	using namespace std::placeholders;
 
 	LBM lbm;
@@ -159,11 +216,11 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPreInstance, _I
 	//auto init_lbm = std::bind(&LBM::init, &lbm, _1, _2, _3);
 	auto init_lbm = [&](ID3D11Device* device, IDXGISwapChain* swap_chain, ID3D11DeviceContext* context) { return lbm.init(device, swap_chain, context); };
 	auto get_lbm_process = [&] { return std::bind(&LBM::process, &lbm); };
-	auto app_process = pipe() >> createWnd >> createDeviceAndSwapChain >> init_lbm >> get_lbm_process >> msgLoop;
+
+	auto app_process = chaincall::pipe() >> createWnd >> createDeviceAndSwapChain >> init_lbm >> get_lbm_process >> msgLoop;
 
 	try
 	{
-		std::function<int(int, int)> test = [](int a, int b) {return a + b; };
 		app_process(hInstance);
 	}
 	catch (const std::exception& e)

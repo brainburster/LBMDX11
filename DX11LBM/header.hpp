@@ -1,7 +1,10 @@
 #pragma once
 
-enum class EWndSize : int
+struct EWndSize
 {
-	width = 800,
-	height = 600
+	enum
+	{
+		width = 800,
+		height = 600
+	};
 };

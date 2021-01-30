@@ -3,6 +3,11 @@
 #include <d3dcompiler.h>
 #include <DirectXMath.h>
 #include <stdexcept>
+#include "InputManager.h"
+#include "header.hpp"
+
+//#pragma comment(lib,"dinput8.lib")
+//#pragma comment(lib,"dxguid.lib")
 
 using namespace DirectX;
 
@@ -21,7 +26,10 @@ private:
 
 	ID3D11Texture2D* back_buffer;
 	ID3D11RenderTargetView* back_buffer_rtv;
+	ID3D11Texture2D* tex0;
 	ID3D11Texture2D* tex1;
+
+	D3D11_MAPPED_SUBRESOURCE ms0;
 	ID3D11UnorderedAccessView* tex1_uav;
 	ID3D11ComputeShader* cs;
 };
@@ -57,22 +65,22 @@ void LBM::IMPL::process()
 	draw();
 	handleInput();
 	update();
-	Sleep(1);
 }
 
 void LBM::IMPL::init()
 {
 	//init back_buffer_render_target_view
-	swap_chain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)(&back_buffer));
-	if (!back_buffer)
+
+	if (FAILED(swap_chain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)(&back_buffer))))
 	{
-		throw std::runtime_error("can't get backbuffer");
+		throw std::runtime_error("Failed to get backbuffer");
 	}
-	device->CreateRenderTargetView(back_buffer, 0, &back_buffer_rtv);
-	if (!back_buffer_rtv)
+
+	if (FAILED(device->CreateRenderTargetView(back_buffer, 0, &back_buffer_rtv)))
 	{
-		throw std::runtime_error("can't create RenderTargetView");
+		throw std::runtime_error("Failed to create RenderTargetView");
 	}
+
 	context->OMSetRenderTargets(1, &back_buffer_rtv, 0);
 	//back_buffer->Release();
 	float clear_color[4] = { 0.1f,0.1f,0.5f,0.5f };
@@ -81,31 +89,46 @@ void LBM::IMPL::init()
 	//创建计算着色器
 	ID3DBlob* blob;
 	D3DReadFileToBlob(L"test.cso", &blob);
-	device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, &cs);
-	if (!cs)
+
+	if (FAILED(device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, &cs)))
 	{
-		throw std::runtime_error("can't create compute shader");
+		throw std::runtime_error("Failed to create compute shader");
+	}
+	//创建纹理0以及MappedResouce
+	D3D11_TEXTURE2D_DESC desc_tex0 = { 0 };
+	desc_tex0.Width = EWndSize::width;
+	desc_tex0.Height = EWndSize::height;
+	desc_tex0.ArraySize = 1;
+	desc_tex0.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc_tex0.Usage = D3D11_USAGE_DYNAMIC;
+	desc_tex0.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+	desc_tex0.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	desc_tex0.MiscFlags = 0;
+	desc_tex0.MipLevels = 1;
+	desc_tex0.SampleDesc.Count = 1;
+
+	if (FAILED(device->CreateTexture2D(&desc_tex0, 0, &tex0)))
+	{
+		throw std::runtime_error("Failed to create tex0");
 	}
 
-	//创建纹理以及UAV
+	//创建纹理1以及UAV
 	D3D11_TEXTURE2D_DESC desc_tex1 = { 0 };
-	desc_tex1.Width = 800;
-	desc_tex1.Height = 600;
+	desc_tex1.Width = EWndSize::width;
+	desc_tex1.Height = EWndSize::height;
 	desc_tex1.ArraySize = 1;
 	desc_tex1.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	desc_tex1.Usage = D3D11_USAGE_DEFAULT;
 	desc_tex1.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
 	desc_tex1.CPUAccessFlags = 0;// D3D11_CPU_ACCESS_WRITE;
+	desc_tex1.MiscFlags = 0;
 	desc_tex1.MipLevels = 1;
 	desc_tex1.SampleDesc.Count = 1;
-	desc_tex1.MiscFlags = 0;
 	//desc_tex1.SampleDesc.Quality = 0;
 
-	device->CreateTexture2D(&desc_tex1, 0, &tex1);
-
-	if (!tex1)
+	if (FAILED(device->CreateTexture2D(&desc_tex1, 0, &tex1)))
 	{
-		throw std::runtime_error("can't create texture2d");
+		throw std::runtime_error("Failed to create tex1");
 	}
 
 	D3D11_UNORDERED_ACCESS_VIEW_DESC desc_uav1 = { };
@@ -113,29 +136,51 @@ void LBM::IMPL::init()
 	desc_uav1.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
 	desc_uav1.Texture2D.MipSlice = 0;
 
-	device->CreateUnorderedAccessView(tex1, &desc_uav1, &tex1_uav);
-
-	if (!tex1_uav)
+	if (FAILED(device->CreateUnorderedAccessView(tex1, &desc_uav1, &tex1_uav)))
 	{
-		throw std::runtime_error("can't create unordered access view");
+		throw std::runtime_error("Failed to create unordered access view");
 	}
-
 	swap_chain->Present(0, 0);
 }
 
 void LBM::IMPL::draw()
 {
-	context->CSSetShader(cs, 0, 0);
-	context->CSSetUnorderedAccessViews(0u, 1u, &tex1_uav, 0);
-	context->Dispatch(800, 600, 1);
-	context->CopyResource(back_buffer, tex1);
+	//context->CSSetShader(cs, 0, 0);
+	//context->CSSetUnorderedAccessViews(0u, 1u, &tex1_uav, 0);
+	//context->Dispatch(EWndSize::width, EWndSize::height, 1);
+	//context->CopyResource(back_buffer, tex1);
+	context->CopyResource(back_buffer, tex0);
 	swap_chain->Present(0, 0);
 }
 
 void LBM::IMPL::handleInput()
 {
+	InputManager& input = InputManager::getInstance();
+	if (input.mouseBtnDown(0))
+	{
+		if (FAILED(context->Map(tex0, 0, D3D11_MAP_WRITE_DISCARD, 0, &ms0)))
+		{
+			throw std::runtime_error("Failed to Map");
+		}
+		BYTE* pRow = (BYTE*)ms0.pData;
+		const BYTE data = (BYTE)255;
+		int x = 0;
+		int y = 0;
+		std::tie(x, y) = input.getMousePos();
+		for (size_t i = 0; i < 4; i++)
+		{
+			for (size_t j = 0; j < 4; j++)
+			{
+				size_t index = ms0.RowPitch * (y + i) + (x + j) * 4;
+				memcpy(pRow + index, &data, sizeof(data));
+			}
+		}
+		context->Unmap(tex0, 0);
+		//...
+	}
 }
-
+#include<random>
+#include<chrono>
 void LBM::IMPL::update()
 {
 }

@@ -151,12 +151,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="InputManager.cpp" />
     <ClCompile Include="LBM.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="chaincall.hpp" />
     <ClInclude Include="header.hpp" />
+    <ClInclude Include="InputManager.h" />
     <ClInclude Include="LBM.hpp" />
   </ItemGroup>
   <ItemGroup>
