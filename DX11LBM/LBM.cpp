@@ -17,13 +17,6 @@ public:
 	ComPtr<IDXGISwapChain> swap_chain;
 	ComPtr<ID3D11DeviceContext> context;
 	void init();
-	void createUAV1();
-	void createOutTexrue();
-	void createSRV0();
-	void createInTexrue();
-	void createCS0();
-	void getBackBufferRTV();
-	void getBackBuffer();
 	void process();
 private:
 	void draw();
@@ -32,6 +25,15 @@ private:
 	void update();
 	void clear();
 
+	void buildResource();
+	void createOutTextureUAV();
+	void createOutTexture();
+	void createInTextureSRV();
+	void createInTexture();
+	void createCS_LbmD2Q4();
+	void getBackBufferRTV();
+	void getBackBuffer();
+
 	ComPtr<ID3D11ComputeShader> cs0;
 
 	ComPtr<ID3D11Texture2D> back_buffer;
@@ -39,6 +41,9 @@ private:
 
 	ComPtr<ID3D11Texture2D> in_texrue;
 	ComPtr<ID3D11Texture2D> out_texrue;
+	ComPtr<ID3D11Texture2D> f0_texrue;
+	ComPtr<ID3D11Texture2D> f1_texrue;
+
 	ComPtr<ID3D11ShaderResourceView> in_texrue_srv;
 
 	D3D11_MAPPED_SUBRESOURCE in_texrue_ms0 = {};
@@ -92,18 +97,23 @@ void LBM::IMPL::init()
 	getBackBufferRTV();
 
 	//创建计算着色器
-	createCS0();
+	createCS_LbmD2Q4();
 
-	//创建纹理0, cpu可读写，用于鼠标描绘
-	createInTexrue();
-	createSRV0();
-
-	//创建纹理1，Gpu可读写，用于输出
-	createOutTexrue();
-	createUAV1();
+	buildResource();
 }
 
-void LBM::IMPL::createUAV1()
+void LBM::IMPL::buildResource()
+{
+	//创建纹理0, cpu可读写，用于鼠标描绘
+	createInTexture();
+	createInTextureSRV();
+
+	//创建纹理1，Gpu可读写，用于输出
+	createOutTexture();
+	createOutTextureUAV();
+}
+
+void LBM::IMPL::createOutTextureUAV()
 {
 	D3D11_UNORDERED_ACCESS_VIEW_DESC desc_uav1 = {};
 	desc_uav1.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -116,7 +126,7 @@ void LBM::IMPL::createUAV1()
 	}
 }
 
-void LBM::IMPL::createOutTexrue()
+void LBM::IMPL::createOutTexture()
 {
 	D3D11_TEXTURE2D_DESC desc_out_texrue = { 0 };
 	desc_out_texrue.Width = EWndSize::width;
@@ -137,7 +147,7 @@ void LBM::IMPL::createOutTexrue()
 	}
 }
 
-void LBM::IMPL::createSRV0()
+void LBM::IMPL::createInTextureSRV()
 {
 	D3D11_SHADER_RESOURCE_VIEW_DESC desc_srv0 = {};
 	desc_srv0.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -151,7 +161,7 @@ void LBM::IMPL::createSRV0()
 	}
 }
 
-void LBM::IMPL::createInTexrue()
+void LBM::IMPL::createInTexture()
 {
 	D3D11_TEXTURE2D_DESC desc_in_texrue = { 0 };
 	desc_in_texrue.Width = EWndSize::width;
@@ -171,10 +181,10 @@ void LBM::IMPL::createInTexrue()
 	}
 }
 
-void LBM::IMPL::createCS0()
+void LBM::IMPL::createCS_LbmD2Q4()
 {
 	ComPtr<ID3DBlob> blob;
-	D3DReadFileToBlob(L"test.cso", blob.GetAddressOf());
+	D3DReadFileToBlob(L"lbm_d2q4.cso", blob.GetAddressOf());
 
 	if (FAILED(device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs0.GetAddressOf())))
 	{
