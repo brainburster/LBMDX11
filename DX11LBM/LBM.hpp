@@ -1,5 +1,5 @@
 #pragma once
-
+#include <memory>
 struct ID3D11Device;
 struct IDXGISwapChain;
 struct ID3D11DeviceContext;
@@ -18,5 +18,6 @@ private:
 	LBM& operator=(LBM&&) = delete;
 
 	struct IMPL;
-	IMPL* pimpl;
+	std::unique_ptr<IMPL> pimpl;
+	//IMPL* pimpl;
 };

@@ -31,16 +31,18 @@ private:
 	void draw_point();
 	void update();
 	void clear();
-	ID3D11Texture2D* back_buffer;
-	ID3D11RenderTargetView* back_buffer_rtv;
 
-	ID3D11Texture2D* tex0;
-	ID3D11Texture2D* tex1;
-	ID3D11ShaderResourceView* srv0;
+	ComPtr<ID3D11ComputeShader> cs0;
 
-	D3D11_MAPPED_SUBRESOURCE ms0;
-	ID3D11UnorderedAccessView* tex1_uav;
-	ID3D11ComputeShader* cs0;
+	ComPtr<ID3D11Texture2D> back_buffer;
+	ComPtr<ID3D11RenderTargetView> back_buffer_rtv;
+
+	ComPtr<ID3D11Texture2D> tex0;
+	ComPtr<ID3D11Texture2D> tex1;
+	ComPtr<ID3D11ShaderResourceView> tex0_srv;
+
+	D3D11_MAPPED_SUBRESOURCE tex0_ms0;
+	ComPtr<ID3D11UnorderedAccessView> tex1_uav;
 
 	struct Spot
 	{
@@ -73,11 +75,6 @@ void LBM::process()
 
 LBM::~LBM()
 {
-	if (pimpl)
-	{
-		delete pimpl;
-		pimpl = nullptr;
-	}
 }
 
 void LBM::IMPL::process()
@@ -113,7 +110,7 @@ void LBM::IMPL::createUAV1()
 	desc_uav1.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
 	desc_uav1.Texture2D.MipSlice = 0;
 
-	if (FAILED(device->CreateUnorderedAccessView(tex1, &desc_uav1, &tex1_uav)))
+	if (FAILED(device->CreateUnorderedAccessView(tex1.Get(), &desc_uav1, tex1_uav.GetAddressOf())))
 	{
 		throw std::runtime_error("Failed to create unordered access view");
 	}
@@ -134,7 +131,7 @@ void LBM::IMPL::createTex1()
 	desc_tex1.SampleDesc.Count = 1;
 	//desc_tex1.SampleDesc.Quality = 0;
 
-	if (FAILED(device->CreateTexture2D(&desc_tex1, 0, &tex1)))
+	if (FAILED(device->CreateTexture2D(&desc_tex1, 0, tex1.GetAddressOf())))
 	{
 		throw std::runtime_error("Failed to create tex1");
 	}
@@ -148,7 +145,7 @@ void LBM::IMPL::createSRV0()
 	desc_srv0.Texture2D.MipLevels = 1;
 	desc_srv0.Texture2D.MostDetailedMip = 0;
 
-	if (FAILED(device->CreateShaderResourceView(tex0, &desc_srv0, &srv0)))
+	if (FAILED(device->CreateShaderResourceView(tex0.Get(), &desc_srv0, tex0_srv.GetAddressOf())))
 	{
 		throw std::runtime_error("Faild to create srv0");
 	}
@@ -179,7 +176,7 @@ void LBM::IMPL::createCS0()
 	ComPtr<ID3DBlob> blob;
 	D3DReadFileToBlob(L"test.cso", blob.GetAddressOf());
 
-	if (FAILED(device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, &cs0)))
+	if (FAILED(device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs0.GetAddressOf())))
 	{
 		throw std::runtime_error("Failed to create compute shader");
 	}
@@ -187,20 +184,20 @@ void LBM::IMPL::createCS0()
 
 void LBM::IMPL::getBackBufferRTV()
 {
-	if (FAILED(device->CreateRenderTargetView(back_buffer, 0, &back_buffer_rtv)))
+	if (FAILED(device->CreateRenderTargetView(back_buffer.Get(), 0, back_buffer_rtv.GetAddressOf())))
 	{
 		throw std::runtime_error("Failed to create RenderTargetView");
 	}
 
-	//context->OMSetRenderTargets(1, &back_buffer_rtv, 0);
+	//context->OMSetRenderTargets(1, back_buffer_rtv.GetAddressOf(), 0);
 
 	//float clear_color[4] = { 0.1f,0.1f,0.5f,0.5f };
-	//context->ClearRenderTargetView(back_buffer_rtv, clear_color);
+	//context->ClearRenderTargetView(back_buffer_rtv.Get(), clear_color);
 }
 
 void LBM::IMPL::getBackBuffer()
 {
-	if (FAILED(swap_chain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)(&back_buffer))))
+	if (FAILED(swap_chain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)(back_buffer.GetAddressOf()))))
 	{
 		throw std::runtime_error("Failed to get backbuffer");
 	}
@@ -208,12 +205,12 @@ void LBM::IMPL::getBackBuffer()
 
 void LBM::IMPL::draw()
 {
-	context->CSSetShader(cs0, 0, 0);
-	context->CSGetShaderResources(0, 1, &srv0);
-	context->CSSetUnorderedAccessViews(0, 1, &tex1_uav, 0);
-	context->Dispatch(EWndSize::width, EWndSize::height, 1);
-	context->CopyResource(back_buffer, tex1);
-	//context->CopyResource(back_buffer, tex0);
+	//context->CSSetShader(cs0.Get(), 0, 0);
+	//context->CSGetShaderResources(0, 1, tex0_srv.GetAddressOf());
+	//context->CSSetUnorderedAccessViews(0, 1, tex1_uav.GetAddressOf(), 0);
+	//context->Dispatch(EWndSize::width, EWndSize::height, 1);
+	//context->CopyResource(back_buffer.Get(), tex1.Get());
+	context->CopyResource(back_buffer.Get(), tex0.Get());
 	swap_chain->Present(0, 0);
 }
 
@@ -266,12 +263,12 @@ void LBM::IMPL::draw_point()
 		return;
 	}
 
-	if (FAILED(context->Map(tex0, 0, D3D11_MAP_WRITE_DISCARD, 0, &ms0)))
+	if (FAILED(context->Map(tex0.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &tex0_ms0)))
 	{
 		throw std::runtime_error("Failed to Map");
 	}
 
-	BYTE* p_data = (BYTE*)ms0.pData;
+	BYTE* p_data = (BYTE*)tex0_ms0.pData;
 	int x = 0;
 	int y = 0;
 
@@ -291,12 +288,12 @@ void LBM::IMPL::draw_point()
 					continue;
 				}
 
-				size_t index = ms0.RowPitch * yy + xx * 4;
+				size_t index = tex0_ms0.RowPitch * yy + xx * 4;
 				memcpy(p_data + index, &spot.color, sizeof(BYTE) * 4);
 			}
 		}
 	}
-	context->Unmap(tex0, 0);
+	context->Unmap(tex0.Get(), 0);
 
 	point_buffer.clear();
 }
