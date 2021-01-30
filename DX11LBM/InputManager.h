@@ -1,7 +1,7 @@
 #pragma once
 
-#include <Windows.h>
 #include <tuple>
+#include <memory>
 
 using Pos = std::tuple<int, int>;
 
@@ -17,7 +17,6 @@ public:
 	static InputManager& getInstance();
 	static InputManager& getLast();
 private:
-	Pos mouse_pos;
-	bool mouse_buttons[3];
-	bool keys[256];
+	struct Data;
+	std::unique_ptr<Data> data;
 };
