@@ -170,13 +170,13 @@ void LBM::IMPL::handleInput()
 	if (input.mouseBtnDown(0))
 	{
 		const Pos pos = input.getMousePos();
-		point_buffer.push_back({ pos,5,{233,233,233,255} });
+		point_buffer.push_back({ pos,25,{213,213,213,255} });
 	}
 
 	if (input.mouseBtnDown(2))
 	{
 		const Pos pos = input.getMousePos();
-		point_buffer.push_back({ pos,10,{0,0,0,0} });
+		point_buffer.push_back({ pos,25,{0,0,0,0} });
 	}
 }
 
