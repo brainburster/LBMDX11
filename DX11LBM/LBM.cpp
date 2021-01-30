@@ -205,12 +205,12 @@ void LBM::IMPL::getBackBuffer()
 
 void LBM::IMPL::draw()
 {
-	//context->CSSetShader(cs0.Get(), 0, 0);
-	//context->CSGetShaderResources(0, 1, tex0_srv.GetAddressOf());
-	//context->CSSetUnorderedAccessViews(0, 1, tex1_uav.GetAddressOf(), 0);
-	//context->Dispatch(EWndSize::width, EWndSize::height, 1);
-	//context->CopyResource(back_buffer.Get(), tex1.Get());
-	context->CopyResource(back_buffer.Get(), tex0.Get());
+	context->CSSetShader(cs0.Get(), 0, 0);
+	context->CSSetShaderResources(0, 1, tex0_srv.GetAddressOf());
+	context->CSSetUnorderedAccessViews(0, 1, tex1_uav.GetAddressOf(), 0);
+	context->Dispatch(EWndSize::width, EWndSize::height, 1);
+	context->CopyResource(back_buffer.Get(), tex1.Get());
+	//context->CopyResource(back_buffer.Get(), tex0.Get());
 	swap_chain->Present(0, 0);
 }
 
@@ -258,7 +258,7 @@ void LBM::IMPL::draw_point()
 {
 	static size_t time = 0;
 
-	if (time++ % 123)
+	if (time++ % 20)
 	{
 		return;
 	}
