@@ -109,7 +109,7 @@ HWND createWnd(HINSTANCE hinst)
 		0,                              // Optional window styles.
 		CLASS_NAME,                     // Window class
 		TITLE_NAME,                     // Window text
-		WS_OVERLAPPEDWINDOW,            // Window style
+		WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME,            // Window style
 
 		// Size and position
 		CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,

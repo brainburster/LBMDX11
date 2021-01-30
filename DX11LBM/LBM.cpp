@@ -258,7 +258,7 @@ void LBM::IMPL::draw_point()
 {
 	static size_t time = 0;
 
-	if (time++ % 20)
+	if (time++ % 10)
 	{
 		return;
 	}
