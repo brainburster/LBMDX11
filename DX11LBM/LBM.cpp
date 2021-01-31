@@ -294,13 +294,6 @@ void LBM::IMPL::getBackBuffer()
 
 void LBM::IMPL::draw()
 {
-	context->CSSetShader(cs_lbm_d2q4.Get(), 0, 0);
-	context->CSSetShaderResources(0, 1, srv_tex_in.GetAddressOf());
-	context->CSSetUnorderedAccessViews(0, 1, uav_tex_out.GetAddressOf(), 0);
-	context->CSSetUnorderedAccessViews(1, 1, uav_tex_f0.GetAddressOf(), 0);
-	context->CSSetUnorderedAccessViews(2, 1, uav_tex_f1.GetAddressOf(), 0);
-
-	context->Dispatch(EWndSize::width, EWndSize::height, 1);
 	context->CopyResource(back_buffer.Get(), tex_out.Get());
 	swap_chain->Present(0, 0);
 }
@@ -332,11 +325,19 @@ void LBM::IMPL::handleInput()
 		}
 		point_buffer.push_back({ pos,20,{0,0,0,0} });
 	}
+
+	draw_point();
 }
 
 void LBM::IMPL::update()
 {
-	draw_point();
+	context->CSSetShader(cs_lbm_d2q4.Get(), 0, 0);
+	context->CSSetShaderResources(0, 1, srv_tex_in.GetAddressOf());
+	context->CSSetUnorderedAccessViews(0, 1, uav_tex_out.GetAddressOf(), 0);
+	context->CSSetUnorderedAccessViews(1, 1, uav_tex_f0.GetAddressOf(), 0);
+	context->CSSetUnorderedAccessViews(2, 1, uav_tex_f1.GetAddressOf(), 0);
+
+	context->Dispatch(EWndSize::width, EWndSize::height, 1);
 	//...
 }
 
