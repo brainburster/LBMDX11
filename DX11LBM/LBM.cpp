@@ -26,7 +26,11 @@ private:
 	void clear();
 
 	void buildResource();
+	void createF0UAV();
+	void createF1UAV();
 	void createOutTextureUAV();
+	void createF0();
+	void createF1();
 	void createOutTexture();
 	void createInTextureSRV();
 	void createInTexture();
@@ -34,20 +38,22 @@ private:
 	void getBackBufferRTV();
 	void getBackBuffer();
 
-	ComPtr<ID3D11ComputeShader> cs0;
+	ComPtr<ID3D11ComputeShader> cs_lbm_d2q4;
 
 	ComPtr<ID3D11Texture2D> back_buffer;
-	ComPtr<ID3D11RenderTargetView> back_buffer_rtv;
+	ComPtr<ID3D11RenderTargetView> rtv_back_buffer;
 
-	ComPtr<ID3D11Texture2D> in_texrue;
-	ComPtr<ID3D11Texture2D> out_texrue;
-	ComPtr<ID3D11Texture2D> f0_texrue;
-	ComPtr<ID3D11Texture2D> f1_texrue;
+	ComPtr<ID3D11Texture2D> tex_in;
+	ComPtr<ID3D11Texture2D> tex_out;
+	ComPtr<ID3D11Texture2D> tex_f0;
+	ComPtr<ID3D11Texture2D> tex_f1;
 
-	ComPtr<ID3D11ShaderResourceView> in_texrue_srv;
+	ComPtr<ID3D11ShaderResourceView> srv_tex_in;
 
-	D3D11_MAPPED_SUBRESOURCE in_texrue_ms0 = {};
-	ComPtr<ID3D11UnorderedAccessView> out_texrue_uav;
+	D3D11_MAPPED_SUBRESOURCE ms_tex_in = {};
+	ComPtr<ID3D11UnorderedAccessView> uav_tex_out;
+	ComPtr<ID3D11UnorderedAccessView> uav_tex_f0;
+	ComPtr<ID3D11UnorderedAccessView> uav_tex_f1;
 
 	struct Spot
 	{
@@ -111,51 +117,124 @@ void LBM::IMPL::buildResource()
 	//创建纹理1，Gpu可读写，用于输出
 	createOutTexture();
 	createOutTextureUAV();
+
+	//
+	createF0();
+	createF0UAV();
+	createF1();
+	createF1UAV();
+}
+
+void LBM::IMPL::createF0UAV()
+{
+	D3D11_UNORDERED_ACCESS_VIEW_DESC desc = {};
+	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+	desc.Texture2D.MipSlice = 0;
+
+	if (FAILED(device->CreateUnorderedAccessView(tex_f0.Get(), &desc, uav_tex_f0.GetAddressOf())))
+	{
+		throw std::runtime_error("Failed to create f0 uav");
+	}
+}
+void LBM::IMPL::createF1UAV()
+{
+	D3D11_UNORDERED_ACCESS_VIEW_DESC desc = {};
+	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+	desc.Texture2D.MipSlice = 0;
+
+	if (FAILED(device->CreateUnorderedAccessView(tex_f1.Get(), &desc, uav_tex_f1.GetAddressOf())))
+	{
+		throw std::runtime_error("Failed to create f1 uav");
+	}
 }
 
 void LBM::IMPL::createOutTextureUAV()
 {
-	D3D11_UNORDERED_ACCESS_VIEW_DESC desc_uav1 = {};
-	desc_uav1.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	desc_uav1.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
-	desc_uav1.Texture2D.MipSlice = 0;
+	D3D11_UNORDERED_ACCESS_VIEW_DESC desc = {};
+	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+	desc.Texture2D.MipSlice = 0;
 
-	if (FAILED(device->CreateUnorderedAccessView(out_texrue.Get(), &desc_uav1, out_texrue_uav.GetAddressOf())))
+	if (FAILED(device->CreateUnorderedAccessView(tex_out.Get(), &desc, uav_tex_out.GetAddressOf())))
 	{
-		throw std::runtime_error("Failed to create unordered access view");
+		throw std::runtime_error("Failed to create out texture uav");
 	}
 }
 
-void LBM::IMPL::createOutTexture()
+void LBM::IMPL::createF0()
 {
-	D3D11_TEXTURE2D_DESC desc_out_texrue = { 0 };
-	desc_out_texrue.Width = EWndSize::width;
-	desc_out_texrue.Height = EWndSize::height;
-	desc_out_texrue.ArraySize = 1;
-	desc_out_texrue.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	desc_out_texrue.Usage = D3D11_USAGE_DEFAULT;
-	desc_out_texrue.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
-	desc_out_texrue.CPUAccessFlags = 0;// D3D11_CPU_ACCESS_WRITE;
-	desc_out_texrue.MiscFlags = 0;
-	desc_out_texrue.MipLevels = 1;
-	desc_out_texrue.SampleDesc.Count = 1;
+	D3D11_TEXTURE2D_DESC desc = { 0 };
+	desc.Width = EWndSize::width;
+	desc.Height = EWndSize::height;
+	desc.ArraySize = 1;
+	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
+	desc.CPUAccessFlags = 0;
+	desc.MiscFlags = 0;
+	desc.MipLevels = 1;
+	desc.SampleDesc.Count = 1;
 	//desc_out_texrue.SampleDesc.Quality = 0;
 
-	if (FAILED(device->CreateTexture2D(&desc_out_texrue, 0, out_texrue.GetAddressOf())))
+	if (FAILED(device->CreateTexture2D(&desc, 0, tex_f0.GetAddressOf())))
 	{
 		throw std::runtime_error("Failed to create out_texrue");
 	}
 }
 
+void LBM::IMPL::createF1()
+{
+	D3D11_TEXTURE2D_DESC desc = { 0 };
+	desc.Width = EWndSize::width;
+	desc.Height = EWndSize::height;
+	desc.ArraySize = 1;
+	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
+	desc.CPUAccessFlags = 0;
+	desc.MiscFlags = 0;
+	desc.MipLevels = 1;
+	desc.SampleDesc.Count = 1;
+	//desc_out_texrue.SampleDesc.Quality = 0;
+
+	if (FAILED(device->CreateTexture2D(&desc, 0, tex_f1.GetAddressOf())))
+	{
+		throw std::runtime_error("Failed to create texture f1");
+	}
+}
+
+void LBM::IMPL::createOutTexture()
+{
+	D3D11_TEXTURE2D_DESC desc = { 0 };
+	desc.Width = EWndSize::width;
+	desc.Height = EWndSize::height;
+	desc.ArraySize = 1;
+	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
+	desc.CPUAccessFlags = 0;// D3D11_CPU_ACCESS_WRITE;
+	desc.MiscFlags = 0;
+	desc.MipLevels = 1;
+	desc.SampleDesc.Count = 1;
+	//desc_out_texrue.SampleDesc.Quality = 0;
+
+	if (FAILED(device->CreateTexture2D(&desc, 0, tex_out.GetAddressOf())))
+	{
+		throw std::runtime_error("Failed to create texture f0");
+	}
+}
+
 void LBM::IMPL::createInTextureSRV()
 {
-	D3D11_SHADER_RESOURCE_VIEW_DESC desc_srv0 = {};
-	desc_srv0.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	desc_srv0.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-	desc_srv0.Texture2D.MipLevels = 1;
-	desc_srv0.Texture2D.MostDetailedMip = 0;
+	D3D11_SHADER_RESOURCE_VIEW_DESC desc = {};
+	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	desc.Texture2D.MipLevels = 1;
+	desc.Texture2D.MostDetailedMip = 0;
 
-	if (FAILED(device->CreateShaderResourceView(in_texrue.Get(), &desc_srv0, in_texrue_srv.GetAddressOf())))
+	if (FAILED(device->CreateShaderResourceView(tex_in.Get(), &desc, srv_tex_in.GetAddressOf())))
 	{
 		throw std::runtime_error("Faild to create srv0");
 	}
@@ -163,19 +242,19 @@ void LBM::IMPL::createInTextureSRV()
 
 void LBM::IMPL::createInTexture()
 {
-	D3D11_TEXTURE2D_DESC desc_in_texrue = { 0 };
-	desc_in_texrue.Width = EWndSize::width;
-	desc_in_texrue.Height = EWndSize::height;
-	desc_in_texrue.ArraySize = 1;
-	desc_in_texrue.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	desc_in_texrue.Usage = D3D11_USAGE_DYNAMIC;
-	desc_in_texrue.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-	desc_in_texrue.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	desc_in_texrue.MiscFlags = 0;
-	desc_in_texrue.MipLevels = 1;
-	desc_in_texrue.SampleDesc.Count = 1;
+	D3D11_TEXTURE2D_DESC desc = { 0 };
+	desc.Width = EWndSize::width;
+	desc.Height = EWndSize::height;
+	desc.ArraySize = 1;
+	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.Usage = D3D11_USAGE_DYNAMIC;
+	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+	desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	desc.MiscFlags = 0;
+	desc.MipLevels = 1;
+	desc.SampleDesc.Count = 1;
 
-	if (FAILED(device->CreateTexture2D(&desc_in_texrue, 0, &in_texrue)))
+	if (FAILED(device->CreateTexture2D(&desc, 0, &tex_in)))
 	{
 		throw std::runtime_error("Failed to create in_texrue");
 	}
@@ -186,7 +265,7 @@ void LBM::IMPL::createCS_LbmD2Q4()
 	ComPtr<ID3DBlob> blob;
 	D3DReadFileToBlob(L"lbm_d2q4.cso", blob.GetAddressOf());
 
-	if (FAILED(device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs0.GetAddressOf())))
+	if (FAILED(device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_lbm_d2q4.GetAddressOf())))
 	{
 		throw std::runtime_error("Failed to create compute shader");
 	}
@@ -194,7 +273,7 @@ void LBM::IMPL::createCS_LbmD2Q4()
 
 void LBM::IMPL::getBackBufferRTV()
 {
-	if (FAILED(device->CreateRenderTargetView(back_buffer.Get(), 0, back_buffer_rtv.GetAddressOf())))
+	if (FAILED(device->CreateRenderTargetView(back_buffer.Get(), 0, rtv_back_buffer.GetAddressOf())))
 	{
 		throw std::runtime_error("Failed to create RenderTargetView");
 	}
@@ -215,12 +294,14 @@ void LBM::IMPL::getBackBuffer()
 
 void LBM::IMPL::draw()
 {
-	context->CSSetShader(cs0.Get(), 0, 0);
-	context->CSSetShaderResources(0, 1, in_texrue_srv.GetAddressOf());
-	context->CSSetUnorderedAccessViews(0, 1, out_texrue_uav.GetAddressOf(), 0);
+	context->CSSetShader(cs_lbm_d2q4.Get(), 0, 0);
+	context->CSSetShaderResources(0, 1, srv_tex_in.GetAddressOf());
+	context->CSSetUnorderedAccessViews(0, 1, uav_tex_out.GetAddressOf(), 0);
+	context->CSSetUnorderedAccessViews(1, 1, uav_tex_f0.GetAddressOf(), 0);
+	context->CSSetUnorderedAccessViews(2, 1, uav_tex_f1.GetAddressOf(), 0);
+
 	context->Dispatch(EWndSize::width, EWndSize::height, 1);
-	context->CopyResource(back_buffer.Get(), out_texrue.Get());
-	//context->CopyResource(back_buffer.Get(), in_texrue.Get());
+	context->CopyResource(back_buffer.Get(), tex_out.Get());
 	swap_chain->Present(0, 0);
 }
 
@@ -273,12 +354,12 @@ void LBM::IMPL::draw_point()
 		return;
 	}
 
-	if (FAILED(context->Map(in_texrue.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &in_texrue_ms0)))
+	if (FAILED(context->Map(tex_in.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &ms_tex_in)))
 	{
 		throw std::runtime_error("Failed to Map");
 	}
 
-	BYTE* p_data = (BYTE*)in_texrue_ms0.pData;
+	BYTE* p_data = (BYTE*)ms_tex_in.pData;
 	int x = 0;
 	int y = 0;
 
@@ -298,12 +379,12 @@ void LBM::IMPL::draw_point()
 					continue;
 				}
 
-				size_t index = in_texrue_ms0.RowPitch * yy + xx * 4;
+				size_t index = ms_tex_in.RowPitch * yy + xx * 4;
 				memcpy(p_data + index, &spot.color, sizeof(BYTE) * 4);
 			}
 		}
 	}
-	context->Unmap(in_texrue.Get(), 0);
+	context->Unmap(tex_in.Get(), 0);
 
 	point_buffer.clear();
 }

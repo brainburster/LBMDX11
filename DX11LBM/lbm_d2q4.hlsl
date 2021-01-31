@@ -1,6 +1,7 @@
 Texture2D<float4> inTex : register(t0);
 RWTexture2D<float4> outTex : register(u0);
-//RWTexture2D<float4> f : register(u1);
+RWTexture2D<float4> f_in : register(u1);
+RWTexture2D<float4> f_out : register(u2);
 
 [numthreads(1, 1, 1)]
 void main(uint3 DTid : SV_DispatchThreadID)
