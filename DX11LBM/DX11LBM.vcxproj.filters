@@ -43,7 +43,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="lbm_d2q4.hlsl">
+    <FxCompile Include="lbm_d2q9.hlsl">
       <Filter>shader</Filter>
     </FxCompile>
   </ItemGroup>

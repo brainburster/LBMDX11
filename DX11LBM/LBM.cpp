@@ -34,7 +34,7 @@ private:
 	void createOutTexture();
 	void createInTextureSRV();
 	void createInTexture();
-	void createCS_LbmD2Q4();
+	void createCS_LbmD2Q9();
 	void getBackBufferRTV();
 	void getBackBuffer();
 
@@ -45,8 +45,8 @@ private:
 
 	ComPtr<ID3D11Texture2D> tex_in;
 	ComPtr<ID3D11Texture2D> tex_out;
-	ComPtr<ID3D11Texture2D> tex_f0;
-	ComPtr<ID3D11Texture2D> tex_f1;
+	ComPtr<ID3D11Texture2D> tex_array_f0;
+	ComPtr<ID3D11Texture2D> tex_array_f1;
 
 	ComPtr<ID3D11ShaderResourceView> srv_tex_in;
 
@@ -103,7 +103,7 @@ void LBM::IMPL::init()
 	getBackBufferRTV();
 
 	//创建计算着色器
-	createCS_LbmD2Q4();
+	createCS_LbmD2Q9();
 
 	buildResource();
 }
@@ -125,51 +125,13 @@ void LBM::IMPL::buildResource()
 	createF1UAV();
 }
 
-void LBM::IMPL::createF0UAV()
-{
-	D3D11_UNORDERED_ACCESS_VIEW_DESC desc = {};
-	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	desc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
-	desc.Texture2D.MipSlice = 0;
-
-	if (FAILED(device->CreateUnorderedAccessView(tex_f0.Get(), &desc, uav_tex_f0.GetAddressOf())))
-	{
-		throw std::runtime_error("Failed to create f0 uav");
-	}
-}
-void LBM::IMPL::createF1UAV()
-{
-	D3D11_UNORDERED_ACCESS_VIEW_DESC desc = {};
-	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	desc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
-	desc.Texture2D.MipSlice = 0;
-
-	if (FAILED(device->CreateUnorderedAccessView(tex_f1.Get(), &desc, uav_tex_f1.GetAddressOf())))
-	{
-		throw std::runtime_error("Failed to create f1 uav");
-	}
-}
-
-void LBM::IMPL::createOutTextureUAV()
-{
-	D3D11_UNORDERED_ACCESS_VIEW_DESC desc = {};
-	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	desc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
-	desc.Texture2D.MipSlice = 0;
-
-	if (FAILED(device->CreateUnorderedAccessView(tex_out.Get(), &desc, uav_tex_out.GetAddressOf())))
-	{
-		throw std::runtime_error("Failed to create out texture uav");
-	}
-}
-
 void LBM::IMPL::createF0()
 {
 	D3D11_TEXTURE2D_DESC desc = { 0 };
 	desc.Width = EWndSize::width;
 	desc.Height = EWndSize::height;
-	desc.ArraySize = 1;
-	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.ArraySize = 9;
+	desc.Format = DXGI_FORMAT_R8_UNORM;
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
 	desc.CPUAccessFlags = 0;
@@ -178,7 +140,7 @@ void LBM::IMPL::createF0()
 	desc.SampleDesc.Count = 1;
 	//desc_out_texrue.SampleDesc.Quality = 0;
 
-	if (FAILED(device->CreateTexture2D(&desc, 0, tex_f0.GetAddressOf())))
+	if (FAILED(device->CreateTexture2D(&desc, 0, tex_array_f0.GetAddressOf())))
 	{
 		throw std::runtime_error("Failed to create out_texrue");
 	}
@@ -189,8 +151,8 @@ void LBM::IMPL::createF1()
 	D3D11_TEXTURE2D_DESC desc = { 0 };
 	desc.Width = EWndSize::width;
 	desc.Height = EWndSize::height;
-	desc.ArraySize = 1;
-	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.ArraySize = 9;
+	desc.Format = DXGI_FORMAT_R8_UNORM;
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
 	desc.CPUAccessFlags = 0;
@@ -199,9 +161,37 @@ void LBM::IMPL::createF1()
 	desc.SampleDesc.Count = 1;
 	//desc_out_texrue.SampleDesc.Quality = 0;
 
-	if (FAILED(device->CreateTexture2D(&desc, 0, tex_f1.GetAddressOf())))
+	if (FAILED(device->CreateTexture2D(&desc, 0, tex_array_f1.GetAddressOf())))
 	{
 		throw std::runtime_error("Failed to create texture f1");
+	}
+}
+
+void LBM::IMPL::createF0UAV()
+{
+	D3D11_UNORDERED_ACCESS_VIEW_DESC desc = {};
+	desc.Format = DXGI_FORMAT_R8_UNORM;
+	desc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
+	desc.Texture2DArray.ArraySize = 9;
+	desc.Texture2DArray.MipSlice = 0;
+	desc.Texture2DArray.FirstArraySlice = 0;
+	if (FAILED(device->CreateUnorderedAccessView(tex_array_f0.Get(), &desc, uav_tex_f0.GetAddressOf())))
+	{
+		throw std::runtime_error("Failed to create f0 uav");
+	}
+}
+void LBM::IMPL::createF1UAV()
+{
+	D3D11_UNORDERED_ACCESS_VIEW_DESC desc = {};
+	desc.Format = DXGI_FORMAT_R8_UNORM;
+	desc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
+	desc.Texture2DArray.ArraySize = 9;
+	desc.Texture2DArray.MipSlice = 0;
+	desc.Texture2DArray.FirstArraySlice = 0;
+
+	if (FAILED(device->CreateUnorderedAccessView(tex_array_f1.Get(), &desc, uav_tex_f1.GetAddressOf())))
+	{
+		throw std::runtime_error("Failed to create f1 uav");
 	}
 }
 
@@ -223,6 +213,19 @@ void LBM::IMPL::createOutTexture()
 	if (FAILED(device->CreateTexture2D(&desc, 0, tex_out.GetAddressOf())))
 	{
 		throw std::runtime_error("Failed to create texture f0");
+	}
+}
+
+void LBM::IMPL::createOutTextureUAV()
+{
+	D3D11_UNORDERED_ACCESS_VIEW_DESC desc = {};
+	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+	desc.Texture2D.MipSlice = 0;
+
+	if (FAILED(device->CreateUnorderedAccessView(tex_out.Get(), &desc, uav_tex_out.GetAddressOf())))
+	{
+		throw std::runtime_error("Failed to create out texture uav");
 	}
 }
 
@@ -260,10 +263,10 @@ void LBM::IMPL::createInTexture()
 	}
 }
 
-void LBM::IMPL::createCS_LbmD2Q4()
+void LBM::IMPL::createCS_LbmD2Q9()
 {
 	ComPtr<ID3DBlob> blob;
-	D3DReadFileToBlob(L"lbm_d2q4.cso", blob.GetAddressOf());
+	D3DReadFileToBlob(L"lbm_d2q9.cso", blob.GetAddressOf());
 
 	if (FAILED(device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_lbm_d2q4.GetAddressOf())))
 	{
@@ -310,9 +313,9 @@ void LBM::IMPL::handleInput()
 		{
 			auto old = point_buffer.back();
 			point_buffer.pop_back();
-			smooth_add_point(std::move(old), { pos,20,{213,213,213,255} });
+			smooth_add_point(std::move(old), { pos,10,{213,213,213,255} });
 		}
-		point_buffer.push_back({ pos,20,{213,213,213,255} });
+		point_buffer.push_back({ pos,10,{213,213,213,255} });
 	}
 	else if (input.mouseBtnDown(2))
 	{
@@ -321,9 +324,9 @@ void LBM::IMPL::handleInput()
 		{
 			auto old = point_buffer.back();
 			point_buffer.pop_back();
-			smooth_add_point(std::move(old), { pos,20,{0,0,0,0} });
+			smooth_add_point(std::move(old), { pos,10,{0,0,0,0} });
 		}
-		point_buffer.push_back({ pos,20,{0,0,0,0} });
+		point_buffer.push_back({ pos,10,{0,0,0,0} });
 	}
 
 	draw_point();
@@ -350,7 +353,7 @@ void LBM::IMPL::draw_point()
 {
 	static size_t time = 0;
 
-	if (time++ % 10)
+	if (time++ % 4)
 	{
 		return;
 	}

@@ -162,7 +162,7 @@
     <ClInclude Include="LBM.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="lbm_d2q4.hlsl">
+    <FxCompile Include="lbm_d2q9.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Compute</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">5.0</ShaderModel>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
