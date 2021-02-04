@@ -43,7 +43,13 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="lbm_d2q9.hlsl">
+    <FxCompile Include="init.hlsl">
+      <Filter>shader</Filter>
+    </FxCompile>
+    <FxCompile Include="lbm_collision.hlsl">
+      <Filter>shader</Filter>
+    </FxCompile>
+    <FxCompile Include="lbm_streaming.hlsl">
       <Filter>shader</Filter>
     </FxCompile>
   </ItemGroup>

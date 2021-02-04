@@ -34,12 +34,14 @@ private:
 	void createOutTexture();
 	void createInTextureSRV();
 	void createInTexture();
-	void createCS_LbmD2Q9();
+	void createCS_lbm_collision();
+	void createCS_lbm_streaming();
+	void createCS_init();
 	void getBackBufferRTV();
 	void getBackBuffer();
-
-	ComPtr<ID3D11ComputeShader> cs_lbm_d2q4;
-
+	ComPtr<ID3D11ComputeShader> cs_init;
+	ComPtr<ID3D11ComputeShader> cs_lbm_collision;
+	ComPtr<ID3D11ComputeShader> cs_lbm_streaming;
 	ComPtr<ID3D11Texture2D> back_buffer;
 	ComPtr<ID3D11RenderTargetView> rtv_back_buffer;
 
@@ -52,8 +54,8 @@ private:
 
 	D3D11_MAPPED_SUBRESOURCE ms_tex_in = {};
 	ComPtr<ID3D11UnorderedAccessView> uav_tex_out;
-	ComPtr<ID3D11UnorderedAccessView> uav_tex_f0;
-	ComPtr<ID3D11UnorderedAccessView> uav_tex_f1;
+	ComPtr<ID3D11UnorderedAccessView> uav_tex_array_f0;
+	ComPtr<ID3D11UnorderedAccessView> uav_tex_array_f1;
 
 	struct Spot
 	{
@@ -103,9 +105,20 @@ void LBM::IMPL::init()
 	getBackBufferRTV();
 
 	//创建计算着色器
-	createCS_LbmD2Q9();
+	createCS_init();
+	createCS_lbm_collision();
+	createCS_lbm_streaming();
 
 	buildResource();
+
+	context->CSSetShader(cs_init.Get(), 0, 0);
+	context->CSSetUnorderedAccessViews(0, 1, uav_tex_array_f0.GetAddressOf(), 0);
+	context->Dispatch(EWndSize::width, EWndSize::height, 1);
+
+	context->CSSetShaderResources(0, 1, srv_tex_in.GetAddressOf());
+	context->CSSetUnorderedAccessViews(0, 1, uav_tex_out.GetAddressOf(), 0);
+	context->CSSetUnorderedAccessViews(1, 1, uav_tex_array_f0.GetAddressOf(), 0);
+	context->CSSetUnorderedAccessViews(2, 1, uav_tex_array_f1.GetAddressOf(), 0);
 }
 
 void LBM::IMPL::buildResource()
@@ -131,7 +144,7 @@ void LBM::IMPL::createF0()
 	desc.Width = EWndSize::width;
 	desc.Height = EWndSize::height;
 	desc.ArraySize = 9;
-	desc.Format = DXGI_FORMAT_R8_UNORM;
+	desc.Format = DXGI_FORMAT_R16_UNORM;
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
 	desc.CPUAccessFlags = 0;
@@ -142,7 +155,7 @@ void LBM::IMPL::createF0()
 
 	if (FAILED(device->CreateTexture2D(&desc, 0, tex_array_f0.GetAddressOf())))
 	{
-		throw std::runtime_error("Failed to create out_texrue");
+		throw std::runtime_error("Failed to create f0");
 	}
 }
 
@@ -152,7 +165,7 @@ void LBM::IMPL::createF1()
 	desc.Width = EWndSize::width;
 	desc.Height = EWndSize::height;
 	desc.ArraySize = 9;
-	desc.Format = DXGI_FORMAT_R8_UNORM;
+	desc.Format = DXGI_FORMAT_R16_UNORM;
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
 	desc.CPUAccessFlags = 0;
@@ -170,12 +183,12 @@ void LBM::IMPL::createF1()
 void LBM::IMPL::createF0UAV()
 {
 	D3D11_UNORDERED_ACCESS_VIEW_DESC desc = {};
-	desc.Format = DXGI_FORMAT_R8_UNORM;
+	desc.Format = DXGI_FORMAT_R16_UNORM;
 	desc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
 	desc.Texture2DArray.ArraySize = 9;
 	desc.Texture2DArray.MipSlice = 0;
 	desc.Texture2DArray.FirstArraySlice = 0;
-	if (FAILED(device->CreateUnorderedAccessView(tex_array_f0.Get(), &desc, uav_tex_f0.GetAddressOf())))
+	if (FAILED(device->CreateUnorderedAccessView(tex_array_f0.Get(), &desc, uav_tex_array_f0.GetAddressOf())))
 	{
 		throw std::runtime_error("Failed to create f0 uav");
 	}
@@ -183,13 +196,13 @@ void LBM::IMPL::createF0UAV()
 void LBM::IMPL::createF1UAV()
 {
 	D3D11_UNORDERED_ACCESS_VIEW_DESC desc = {};
-	desc.Format = DXGI_FORMAT_R8_UNORM;
+	desc.Format = DXGI_FORMAT_R16_UNORM;
 	desc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
 	desc.Texture2DArray.ArraySize = 9;
 	desc.Texture2DArray.MipSlice = 0;
 	desc.Texture2DArray.FirstArraySlice = 0;
 
-	if (FAILED(device->CreateUnorderedAccessView(tex_array_f1.Get(), &desc, uav_tex_f1.GetAddressOf())))
+	if (FAILED(device->CreateUnorderedAccessView(tex_array_f1.Get(), &desc, uav_tex_array_f1.GetAddressOf())))
 	{
 		throw std::runtime_error("Failed to create f1 uav");
 	}
@@ -263,12 +276,34 @@ void LBM::IMPL::createInTexture()
 	}
 }
 
-void LBM::IMPL::createCS_LbmD2Q9()
+void LBM::IMPL::createCS_lbm_collision()
 {
 	ComPtr<ID3DBlob> blob;
-	D3DReadFileToBlob(L"lbm_d2q9.cso", blob.GetAddressOf());
+	D3DReadFileToBlob(L"lbm_collision.cso", blob.GetAddressOf());
 
-	if (FAILED(device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_lbm_d2q4.GetAddressOf())))
+	if (FAILED(device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_lbm_collision.GetAddressOf())))
+	{
+		throw std::runtime_error("Failed to create compute shader");
+	}
+}
+
+void LBM::IMPL::createCS_lbm_streaming()
+{
+	ComPtr<ID3DBlob> blob;
+	D3DReadFileToBlob(L"lbm_streaming.cso", blob.GetAddressOf());
+
+	if (FAILED(device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_lbm_streaming.GetAddressOf())))
+	{
+		throw std::runtime_error("Failed to create compute shader");
+	}
+}
+
+void LBM::IMPL::createCS_init()
+{
+	ComPtr<ID3DBlob> blob;
+	D3DReadFileToBlob(L"init.cso", blob.GetAddressOf());
+
+	if (FAILED(device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_init.GetAddressOf())))
 	{
 		throw std::runtime_error("Failed to create compute shader");
 	}
@@ -334,12 +369,10 @@ void LBM::IMPL::handleInput()
 
 void LBM::IMPL::update()
 {
-	context->CSSetShader(cs_lbm_d2q4.Get(), 0, 0);
-	context->CSSetShaderResources(0, 1, srv_tex_in.GetAddressOf());
-	context->CSSetUnorderedAccessViews(0, 1, uav_tex_out.GetAddressOf(), 0);
-	context->CSSetUnorderedAccessViews(1, 1, uav_tex_f0.GetAddressOf(), 0);
-	context->CSSetUnorderedAccessViews(2, 1, uav_tex_f1.GetAddressOf(), 0);
+	context->CSSetShader(cs_lbm_collision.Get(), 0, 0);
+	context->Dispatch(EWndSize::width, EWndSize::height, 1);
 
+	context->CSSetShader(cs_lbm_streaming.Get(), 0, 0);
 	context->Dispatch(EWndSize::width, EWndSize::height, 1);
 	//...
 }
@@ -383,7 +416,7 @@ void LBM::IMPL::draw_point()
 					continue;
 				}
 
-				size_t index = ms_tex_in.RowPitch * yy + xx * 4;
+				int index = ms_tex_in.RowPitch * yy + xx * 4;
 				memcpy(p_data + index, &spot.color, sizeof(BYTE) * 4);
 			}
 		}
