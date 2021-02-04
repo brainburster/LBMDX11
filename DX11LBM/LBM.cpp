@@ -348,9 +348,9 @@ void LBM::IMPL::handleInput()
 		{
 			auto old = point_buffer.back();
 			point_buffer.pop_back();
-			smooth_add_point(std::move(old), { pos,10,{213,213,213,255} });
+			smooth_add_point(std::move(old), { pos,20,{213,213,213,255} });
 		}
-		point_buffer.push_back({ pos,10,{213,213,213,255} });
+		point_buffer.push_back({ pos,20,{213,213,213,255} });
 	}
 	else if (input.mouseBtnDown(2))
 	{
@@ -359,9 +359,9 @@ void LBM::IMPL::handleInput()
 		{
 			auto old = point_buffer.back();
 			point_buffer.pop_back();
-			smooth_add_point(std::move(old), { pos,10,{0,0,0,0} });
+			smooth_add_point(std::move(old), { pos,20,{0,0,0,0} });
 		}
-		point_buffer.push_back({ pos,10,{0,0,0,0} });
+		point_buffer.push_back({ pos,20,{0,0,0,0} });
 	}
 
 	draw_point();

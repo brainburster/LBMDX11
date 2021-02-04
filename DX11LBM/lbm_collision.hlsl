@@ -53,7 +53,7 @@ void collision(uint2 index)
         eq[m] = rho * w[m] * (1 + vu[m] + 0.5 * vu[m] * vu[m] - usqr);
     }
     
-    outTex[index] = saturate(float4(0, saturate(rho / 3 * 2000), 0, 1) + inTex[index]);
+    outTex[index] = saturate(float4(0, saturate(rho / 3 * 2500), 0, 1) + inTex[index]*0.75);
     
     [unroll(9)]
     for (uint n = 0; n < 9; n++)

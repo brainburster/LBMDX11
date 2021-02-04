@@ -22,7 +22,7 @@ void streaming(uint2 index)
 
 void bounceBack(uint2 index)
 {
-    if (inTex[index].w)
+    if (inTex[index].w || index.y <= 1 || index.y >= 598)
     {
 		[unroll(9)]
         for (uint i = 0; i < 9; i++)
@@ -38,9 +38,9 @@ void bounceBack(uint2 index)
             f_in[uint3(index, i)] = f_in[uint3(index, i)];
         }
     }
-    if (index.x==0)
+    if (index.x==799)
     {
-        f_in[uint3(index, 1)] = saturate(f_in[uint3(index, 1)] + 0.0001);
+        f_in[uint3(index, 7)] = saturate(f_in[uint3(index, 7)] + 0.0001);
     }
 }
 
@@ -50,6 +50,6 @@ void main(uint3 DTid : SV_DispatchThreadID)
     const int2 index = DTid.xy;
     
     streaming(index);
-    DeviceMemoryBarrierWithGroupSync();
+    //DeviceMemoryBarrierWithGroupSync();
     bounceBack(index);
 }
