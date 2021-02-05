@@ -30,8 +30,28 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		InputManager::getInstance().setMousePos(LOWORD(lParam), HIWORD(lParam));
 		return 0;
 	}
+	case WM_NCMOUSELEAVE:
+	{
+		InputManager::getInstance().setMouseBtn(0, false);
+		InputManager::getInstance().setMouseBtn(1, false);
+		InputManager::getInstance().setMouseBtn(2, false);
+	}
+	case WM_NCMOUSEMOVE:
+	{
+		InputManager::getInstance().setMouseBtn(0, false);
+		InputManager::getInstance().setMouseBtn(1, false);
+		InputManager::getInstance().setMouseBtn(2, false);
+		return 0;
+	}
 	case WM_MOUSEWHEEL:
 	{
+		return 0;
+	}
+	case WM_MOUSELEAVE:
+	{
+		InputManager::getInstance().setMouseBtn(0, false);
+		InputManager::getInstance().setMouseBtn(1, false);
+		InputManager::getInstance().setMouseBtn(2, false);
 		return 0;
 	}
 	case WM_LBUTTONDOWN:

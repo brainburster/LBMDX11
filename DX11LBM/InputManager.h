@@ -15,7 +15,6 @@ public:
 	void setMouseBtn(size_t button, bool down);
 	void setMousePos(int x, int y);
 	static InputManager& getInstance();
-	static InputManager& getLast();
 private:
 	struct Data;
 	std::unique_ptr<Data> data;

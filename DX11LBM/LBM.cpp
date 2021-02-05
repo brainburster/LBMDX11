@@ -144,7 +144,7 @@ void LBM::IMPL::createF0()
 	desc.Width = EWndSize::width;
 	desc.Height = EWndSize::height;
 	desc.ArraySize = 9;
-	desc.Format = DXGI_FORMAT_R16_UNORM;
+	desc.Format = DXGI_FORMAT_R32_FLOAT;
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
 	desc.CPUAccessFlags = 0;
@@ -165,7 +165,7 @@ void LBM::IMPL::createF1()
 	desc.Width = EWndSize::width;
 	desc.Height = EWndSize::height;
 	desc.ArraySize = 9;
-	desc.Format = DXGI_FORMAT_R16_UNORM;
+	desc.Format = DXGI_FORMAT_R32_FLOAT;
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
 	desc.CPUAccessFlags = 0;
@@ -183,7 +183,7 @@ void LBM::IMPL::createF1()
 void LBM::IMPL::createF0UAV()
 {
 	D3D11_UNORDERED_ACCESS_VIEW_DESC desc = {};
-	desc.Format = DXGI_FORMAT_R16_UNORM;
+	desc.Format = DXGI_FORMAT_R32_FLOAT;
 	desc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
 	desc.Texture2DArray.ArraySize = 9;
 	desc.Texture2DArray.MipSlice = 0;
@@ -196,7 +196,7 @@ void LBM::IMPL::createF0UAV()
 void LBM::IMPL::createF1UAV()
 {
 	D3D11_UNORDERED_ACCESS_VIEW_DESC desc = {};
-	desc.Format = DXGI_FORMAT_R16_UNORM;
+	desc.Format = DXGI_FORMAT_R32_FLOAT;
 	desc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
 	desc.Texture2DArray.ArraySize = 9;
 	desc.Texture2DArray.MipSlice = 0;
