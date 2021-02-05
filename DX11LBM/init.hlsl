@@ -5,8 +5,8 @@ void main( uint3 DTid : SV_DispatchThreadID )
 {
     const uint2 index = DTid.xy;
     [unroll(9)]
-    for (uint i = 0; i < 9;i++)
+    for (uint i = 0; i < 9; i++)
     {
-        f[uint3(index, i)] = 0.1f;
+        f[uint3(index, i)] = 0.11f;
     }
 }
