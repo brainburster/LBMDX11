@@ -37,11 +37,15 @@ private:
 	void createCS_lbm_collision();
 	void createCS_lbm_streaming();
 	void createCS_init();
+	void createCS_visualization();
+
 	void getBackBufferRTV();
 	void getBackBuffer();
 	ComPtr<ID3D11ComputeShader> cs_init;
 	ComPtr<ID3D11ComputeShader> cs_lbm_collision;
 	ComPtr<ID3D11ComputeShader> cs_lbm_streaming;
+	ComPtr<ID3D11ComputeShader> cs_visualization;
+
 	ComPtr<ID3D11Texture2D> back_buffer;
 	ComPtr<ID3D11RenderTargetView> rtv_back_buffer;
 
@@ -108,6 +112,7 @@ void LBM::IMPL::init()
 	createCS_init();
 	createCS_lbm_collision();
 	createCS_lbm_streaming();
+	createCS_visualization();
 
 	buildResource();
 
@@ -283,7 +288,7 @@ void LBM::IMPL::createCS_lbm_collision()
 
 	if (FAILED(device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_lbm_collision.GetAddressOf())))
 	{
-		throw std::runtime_error("Failed to create compute shader");
+		throw std::runtime_error("Failed to create compute shader lbm_collision.cso");
 	}
 }
 
@@ -294,7 +299,7 @@ void LBM::IMPL::createCS_lbm_streaming()
 
 	if (FAILED(device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_lbm_streaming.GetAddressOf())))
 	{
-		throw std::runtime_error("Failed to create compute shader");
+		throw std::runtime_error("Failed to create compute shader lbm_streaming.cso");
 	}
 }
 
@@ -305,7 +310,18 @@ void LBM::IMPL::createCS_init()
 
 	if (FAILED(device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_init.GetAddressOf())))
 	{
-		throw std::runtime_error("Failed to create compute shader");
+		throw std::runtime_error("Failed to create compute shader init.cso");
+	}
+}
+
+void LBM::IMPL::createCS_visualization()
+{
+	ComPtr<ID3DBlob> blob;
+	D3DReadFileToBlob(L"visualization.cso", blob.GetAddressOf());
+
+	if (FAILED(device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_visualization.GetAddressOf())))
+	{
+		throw std::runtime_error("Failed to create compute shader outline.cso");
 	}
 }
 
@@ -332,6 +348,9 @@ void LBM::IMPL::getBackBuffer()
 
 void LBM::IMPL::draw()
 {
+	context->CSSetShader(cs_visualization.Get(), 0, 0);
+	context->Dispatch(EWndSize::width, EWndSize::height, 1);
+
 	context->CopyResource(back_buffer.Get(), tex_out.Get());
 	swap_chain->Present(0, 0);
 }

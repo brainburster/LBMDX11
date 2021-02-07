@@ -42,14 +42,4 @@ void main(uint3 DTid : SV_DispatchThreadID)
     bounceBack(index);
     streaming(index);
     //DeviceMemoryBarrierWithGroupSync();
-    
-    float rho = 0;
-    [unroll(9)]
-    for (uint i = 0; i < 9; i++)
-    {
-        rho += f_in[uint3(index, i)];
-    }
-    
-    float display = saturate(pow(rho*0.5,5)*5);
-    outTex[index] = saturate(float4(display, display, display, 1)*(1 - inTex[index]));
 }

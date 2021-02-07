@@ -52,5 +52,8 @@
     <FxCompile Include="lbm_streaming.hlsl">
       <Filter>shader</Filter>
     </FxCompile>
+    <FxCompile Include="visualization.hlsl">
+      <Filter>shader</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>
