@@ -18,17 +18,17 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_KEYDOWN:
 	{
 		InputManager::getInstance().setKey(wParam, true);
-		return 0;
+		break;
 	}
 	case WM_KEYUP:
 	{
 		InputManager::getInstance().setKey(wParam, false);
-		return 0;
+		break;
 	}
 	case WM_MOUSEMOVE:
 	{
 		InputManager::getInstance().setMousePos(LOWORD(lParam), HIWORD(lParam));
-		return 0;
+		break;
 	}
 	case WM_NCMOUSELEAVE:
 	{
@@ -41,59 +41,60 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		InputManager::getInstance().setMouseBtn(0, false);
 		InputManager::getInstance().setMouseBtn(1, false);
 		InputManager::getInstance().setMouseBtn(2, false);
-		return 0;
+		break;
 	}
 	case WM_MOUSEWHEEL:
 	{
-		return 0;
+		break;
 	}
 	case WM_MOUSELEAVE:
 	{
 		InputManager::getInstance().setMouseBtn(0, false);
 		InputManager::getInstance().setMouseBtn(1, false);
 		InputManager::getInstance().setMouseBtn(2, false);
-		return 0;
+		break;
 	}
 	case WM_LBUTTONDOWN:
 	{
 		InputManager::getInstance().setMousePos(LOWORD(lParam), HIWORD(lParam));
 		InputManager::getInstance().setMouseBtn(0, true);
-		return 0;
+		break;
 	}
 	case WM_RBUTTONDOWN:
 	{
 		InputManager::getInstance().setMousePos(LOWORD(lParam), HIWORD(lParam));
 		InputManager::getInstance().setMouseBtn(2, true);
-		return 0;
+		break;
 	}
 	case WM_LBUTTONUP:
 	{
 		InputManager::getInstance().setMousePos(LOWORD(lParam), HIWORD(lParam));
 		InputManager::getInstance().setMouseBtn(0, false);
-		return 0;
+		break;
 	}
 	case WM_RBUTTONUP:
 	{
 		InputManager::getInstance().setMousePos(LOWORD(lParam), HIWORD(lParam));
 		InputManager::getInstance().setMouseBtn(2, false);
-		return 0;
+		break;
 	}
 	case WM_MBUTTONDOWN:
 	{
 		InputManager::getInstance().setMousePos(LOWORD(lParam), HIWORD(lParam));
 		InputManager::getInstance().setMouseBtn(1, true);
-		return 0;
+		break;
 	}
 	case WM_MBUTTONUP:
 	{
 		InputManager::getInstance().setMousePos(LOWORD(lParam), HIWORD(lParam));
 		InputManager::getInstance().setMouseBtn(1, false);
-		return 0;
+		break;
 	}
 	case WM_DESTROY:
+	{
 		PostQuitMessage(0);
-		return 0;
-
+		break;
+	}
 	case WM_PAINT:
 	{
 		PAINTSTRUCT ps;
@@ -104,7 +105,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		EndPaint(hwnd, &ps);
 		return 0;
 	}
-	return 0;
 	}
 	return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
@@ -158,6 +158,8 @@ HWND createWnd(HINSTANCE hinst)
 	MoveWindow(hwnd, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, true);
 	ShowWindow(hwnd, SW_SHOW);
 	SetActiveWindow(hwnd);
+	HCURSOR hcur = LoadCursor(NULL, IDC_ARROW);
+	SetCursor(hcur);
 	return hwnd;
 }
 
