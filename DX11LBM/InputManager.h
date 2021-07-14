@@ -2,6 +2,7 @@
 
 #include <tuple>
 #include <memory>
+#include <Windows.h>
 
 using Pos = std::tuple<int, int>;
 
@@ -15,6 +16,7 @@ public:
 	void setMouseBtn(size_t button, bool down);
 	void setMousePos(int x, int y);
 	static InputManager& getInstance();
+	bool HandleInput(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 private:
 	struct Data;
 	std::unique_ptr<Data> data;

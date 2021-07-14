@@ -68,7 +68,7 @@ private:
 		BYTE color[4];
 	};
 
-	void smooth_add_point(Spot&& a, Spot&& b);
+	void smooth_points(Spot&& a, Spot&& b);
 
 	std::list<Spot> point_buffer;
 };
@@ -365,9 +365,9 @@ void LBM::IMPL::handleInput()
 		const Pos pos = input.getMousePos();
 		if (point_buffer.size() > 0)
 		{
-			auto old = point_buffer.back();
+			decltype(auto) old = point_buffer.back();
 			point_buffer.pop_back();
-			smooth_add_point(std::move(old), { pos,20,{213,213,213,255} });
+			//smooth_points(std::move(old), { pos,20,{213,213,213,255} });
 		}
 		point_buffer.push_back({ pos,20,{213,213,213,255} });
 	}
@@ -376,9 +376,9 @@ void LBM::IMPL::handleInput()
 		const Pos pos = input.getMousePos();
 		if (point_buffer.size() > 0)
 		{
-			auto old = point_buffer.back();
+			decltype(auto) old = point_buffer.back();
 			point_buffer.pop_back();
-			smooth_add_point(std::move(old), { pos,20,{0,0,0,0} });
+			//smooth_points(std::move(old), { pos,20,{0,0,0,0} });
 		}
 		point_buffer.push_back({ pos,20,{0,0,0,0} });
 	}
@@ -445,7 +445,7 @@ void LBM::IMPL::draw_point()
 	point_buffer.clear();
 }
 
-void LBM::IMPL::smooth_add_point(Spot&& a, Spot&& b)
+void LBM::IMPL::smooth_points(Spot&& a, Spot&& b)
 {
 	const Pos a_pos = a.pos;
 	const Pos b_pos = b.pos;
@@ -465,8 +465,8 @@ void LBM::IMPL::smooth_add_point(Spot&& a, Spot&& b)
 		Spot _a = { {_x_1,_y_1},a.size,{a.color[0],a.color[1],a.color[2],a.color[3]} };
 		Spot _b = { {_x_2,_y_2},b.size,{b.color[0],b.color[1],b.color[2],b.color[3]} };
 
-		smooth_add_point(std::move(a), std::move(_a));
-		smooth_add_point(std::move(_b), std::move(b));
+		smooth_points(std::move(a), std::move(_a));
+		smooth_points(std::move(_b), std::move(b));
 		return;
 	}
 	point_buffer.push_back(std::move(a));

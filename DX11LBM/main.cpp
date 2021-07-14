@@ -7,104 +7,16 @@
 #include <functional>
 #include "header.hpp"
 #include "InputManager.h"
+#include <thread>
 
 #pragma comment(lib,"d3d11.lib")
 #pragma comment(lib,"d3dcompiler.lib")
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	switch (uMsg)
+	if (InputManager::getInstance().HandleInput(hwnd, uMsg, wParam, lParam))
 	{
-	case WM_KEYDOWN:
-	{
-		InputManager::getInstance().setKey(wParam, true);
-		break;
-	}
-	case WM_KEYUP:
-	{
-		InputManager::getInstance().setKey(wParam, false);
-		break;
-	}
-	case WM_MOUSEMOVE:
-	{
-		InputManager::getInstance().setMousePos(LOWORD(lParam), HIWORD(lParam));
-		break;
-	}
-	case WM_NCMOUSELEAVE:
-	{
-		InputManager::getInstance().setMouseBtn(0, false);
-		InputManager::getInstance().setMouseBtn(1, false);
-		InputManager::getInstance().setMouseBtn(2, false);
-	}
-	case WM_NCMOUSEMOVE:
-	{
-		InputManager::getInstance().setMouseBtn(0, false);
-		InputManager::getInstance().setMouseBtn(1, false);
-		InputManager::getInstance().setMouseBtn(2, false);
-		break;
-	}
-	case WM_MOUSEWHEEL:
-	{
-		break;
-	}
-	case WM_MOUSELEAVE:
-	{
-		InputManager::getInstance().setMouseBtn(0, false);
-		InputManager::getInstance().setMouseBtn(1, false);
-		InputManager::getInstance().setMouseBtn(2, false);
-		break;
-	}
-	case WM_LBUTTONDOWN:
-	{
-		InputManager::getInstance().setMousePos(LOWORD(lParam), HIWORD(lParam));
-		InputManager::getInstance().setMouseBtn(0, true);
-		break;
-	}
-	case WM_RBUTTONDOWN:
-	{
-		InputManager::getInstance().setMousePos(LOWORD(lParam), HIWORD(lParam));
-		InputManager::getInstance().setMouseBtn(2, true);
-		break;
-	}
-	case WM_LBUTTONUP:
-	{
-		InputManager::getInstance().setMousePos(LOWORD(lParam), HIWORD(lParam));
-		InputManager::getInstance().setMouseBtn(0, false);
-		break;
-	}
-	case WM_RBUTTONUP:
-	{
-		InputManager::getInstance().setMousePos(LOWORD(lParam), HIWORD(lParam));
-		InputManager::getInstance().setMouseBtn(2, false);
-		break;
-	}
-	case WM_MBUTTONDOWN:
-	{
-		InputManager::getInstance().setMousePos(LOWORD(lParam), HIWORD(lParam));
-		InputManager::getInstance().setMouseBtn(1, true);
-		break;
-	}
-	case WM_MBUTTONUP:
-	{
-		InputManager::getInstance().setMousePos(LOWORD(lParam), HIWORD(lParam));
-		InputManager::getInstance().setMouseBtn(1, false);
-		break;
-	}
-	case WM_DESTROY:
-	{
-		PostQuitMessage(0);
-		break;
-	}
-	case WM_PAINT:
-	{
-		PAINTSTRUCT ps;
-		HDC hdc = BeginPaint(hwnd, &ps);
-
-		//FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
-
-		EndPaint(hwnd, &ps);
 		return 0;
-	}
 	}
 	return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
@@ -148,7 +60,7 @@ HWND createWnd(HINSTANCE hinst)
 	const int cxScreen = GetSystemMetrics(SM_CXSCREEN);
 	const int cyScreen = GetSystemMetrics(SM_CYSCREEN);
 
-	RECT rect;
+	RECT rect{};
 	rect.left = (cxScreen - EWndSize::width) / 2;
 	rect.right = (cxScreen + EWndSize::width) / 2;
 	rect.top = (cyScreen - EWndSize::height) / 2;
@@ -168,7 +80,7 @@ auto createDeviceAndSwapChain(HWND hwnd) -> std::tuple<ID3D11Device*, IDXGISwapC
 	D3D_FEATURE_LEVEL featureLevel;
 	ID3D11Device* device;
 	ID3D11DeviceContext* context; //immediate context
-	DXGI_SWAP_CHAIN_DESC swap_chain_desc;
+	DXGI_SWAP_CHAIN_DESC swap_chain_desc{};
 	IDXGISwapChain* swap_chain;
 
 	swap_chain_desc.BufferDesc.Width = EWndSize::width;
@@ -215,6 +127,16 @@ void msgLoop(std::function<void()> update)
 {
 	MSG msg = { 0 };
 
+	bool stop = false;
+	std::thread t{
+		[&]() {
+			while (!stop)
+			{
+				update();
+			}
+		}
+	};
+
 	while (WM_QUIT != msg.message)
 	{
 		if (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE))
@@ -222,11 +144,11 @@ void msgLoop(std::function<void()> update)
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
-		else
-		{
-			update();
-		}
+		//	update();
 	}
+
+	stop = true;
+	t.join();
 }
 
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPreInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
@@ -239,6 +161,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPreInstance, _I
 	auto init_lbm = [&](ID3D11Device* device, IDXGISwapChain* swap_chain, ID3D11DeviceContext* context) { return lbm.init(device, swap_chain, context); };
 	auto get_lbm_process = [&] { return std::bind(&LBM::process, &lbm); };
 
+	//msvc下 无法识别 bind_expression 原因是 msvc 的 functional 头文件中的 tuple_element 模板类中使用了 static_assert 而 decltype 居然会触发static_assert, 破坏了 SFINEA 原则,
+	//使用c++17的invoke_result或者if constexpr或许可以解决，但是我想让它兼容c++11,所以暂时我不管了
 	auto app_process = chaincall::pipe() >> createWnd >> createDeviceAndSwapChain >> init_lbm >> get_lbm_process >> msgLoop;
 
 	try
