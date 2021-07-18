@@ -20,15 +20,15 @@ void main( uint3 DTid : SV_DispatchThreadID )
         rho[3] += f_in[uint3(index + int2(0, -1), i)];
         rho[4] += f_in[uint3(index + int2(0, 1), i)];
     }
+    
     float d = 0;
-    float w = 1;
+    [unroll(5)]
     for (uint j = 1; j < 5;j++)
     {
         d += pow(rho[j] - rho[0], 2);
     }
-    if (d>0.0001)
-    {
-        w = 0.8;
-    }
-    outTex[index] = saturate(float4(1, w, w, 1) * pow(rho[0], 5) * 0.1 + (inTex[index]) * 2);
+
+    float w = 1-step(1e-4f,d)*0.2f;
+    outTex[index] = lerp(saturate(float4(1.f, w, w, 1.f) * pow(rho[0], 5) * 0.1f), float4(0.2f, 0.5f, 0.7f, 1.f),
+    saturate((inTex[index]).r * 2));
 }
