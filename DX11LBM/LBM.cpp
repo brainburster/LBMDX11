@@ -286,7 +286,7 @@ void LBM::IMPL::createInTexture()
 void LBM::IMPL::createCS_lbm_collision()
 {
 	ComPtr<ID3DBlob> blob;
-	D3DReadFileToBlob(L"lbm_collision.cso", blob.GetAddressOf());
+	D3DReadFileToBlob(L"shaders/lbm_collision.cso", blob.GetAddressOf());
 
 	if (FAILED(device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_lbm_collision.GetAddressOf())))
 	{
@@ -297,7 +297,7 @@ void LBM::IMPL::createCS_lbm_collision()
 void LBM::IMPL::createCS_lbm_streaming()
 {
 	ComPtr<ID3DBlob> blob;
-	D3DReadFileToBlob(L"lbm_streaming.cso", blob.GetAddressOf());
+	D3DReadFileToBlob(L"shaders/lbm_streaming.cso", blob.GetAddressOf());
 
 	if (FAILED(device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_lbm_streaming.GetAddressOf())))
 	{
@@ -308,7 +308,7 @@ void LBM::IMPL::createCS_lbm_streaming()
 void LBM::IMPL::createCS_init()
 {
 	ComPtr<ID3DBlob> blob;
-	D3DReadFileToBlob(L"init.cso", blob.GetAddressOf());
+	D3DReadFileToBlob(L"shaders/init.cso", blob.GetAddressOf());
 
 	if (FAILED(device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_init.GetAddressOf())))
 	{
@@ -319,7 +319,7 @@ void LBM::IMPL::createCS_init()
 void LBM::IMPL::createCS_visualization()
 {
 	ComPtr<ID3DBlob> blob;
-	D3DReadFileToBlob(L"visualization.cso", blob.GetAddressOf());
+	D3DReadFileToBlob(L"shaders/visualization.cso", blob.GetAddressOf());
 
 	if (FAILED(device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_visualization.GetAddressOf())))
 	{
@@ -443,6 +443,10 @@ void LBM::IMPL::draw_point()
 		{
 			for (int j = -size / 2; j < size / 2; j++)
 			{
+				if ((i * i + j * j) > (size / 2) * (size / 2))
+				{
+					continue;
+				}
 				int xx = x + j;
 				int yy = y + i;
 
