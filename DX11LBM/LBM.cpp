@@ -19,6 +19,7 @@ public:
 	void init();
 	void process();
 private:
+
 	void draw();
 	void handleInput();
 	void draw_point();
@@ -38,6 +39,7 @@ private:
 	void createCS_lbm_streaming();
 	void createCS_init();
 	void createCS_visualization();
+	void fence();
 
 	void getBackBufferRTV();
 	void getBackBuffer();
@@ -325,6 +327,17 @@ void LBM::IMPL::createCS_visualization()
 	}
 }
 
+void LBM::IMPL::fence()
+{
+	ComPtr<ID3D11Query> event_query;
+	D3D11_QUERY_DESC queryDesc{};
+	queryDesc.Query = D3D11_QUERY_EVENT;
+	queryDesc.MiscFlags = 0;
+	device->CreateQuery(&queryDesc, event_query.GetAddressOf());
+	context->End(event_query.Get());
+	while (context->GetData(event_query.Get(), NULL, 0, 0) == S_FALSE) {}
+}
+
 void LBM::IMPL::getBackBufferRTV()
 {
 	if (FAILED(device->CreateRenderTargetView(back_buffer.Get(), 0, rtv_back_buffer.GetAddressOf())))
@@ -348,9 +361,10 @@ void LBM::IMPL::getBackBuffer()
 
 void LBM::IMPL::draw()
 {
+	//fence();
 	context->CSSetShader(cs_visualization.Get(), 0, 0);
 	context->Dispatch(EWndSize::width, EWndSize::height, 1);
-
+	//fence();
 	context->CopyResource(back_buffer.Get(), tex_out.Get());
 	swap_chain->Present(0, 0);
 }
@@ -388,9 +402,11 @@ void LBM::IMPL::handleInput()
 
 void LBM::IMPL::update()
 {
+	fence();
 	context->CSSetShader(cs_lbm_collision.Get(), 0, 0);
 	context->Dispatch(EWndSize::width, EWndSize::height, 1);
 
+	fence();
 	context->CSSetShader(cs_lbm_streaming.Get(), 0, 0);
 	context->Dispatch(EWndSize::width, EWndSize::height, 1);
 	//...
