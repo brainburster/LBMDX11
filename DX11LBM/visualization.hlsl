@@ -29,6 +29,6 @@ void main( uint3 DTid : SV_DispatchThreadID )
     }
 
     float w = 1-step(1e-4f,d)*0.2f;
-    outTex[index] = lerp(saturate(float4(1.f, w, w, 1.f) * pow(rho[0], 5) * 0.1f), float4(0.2f, 0.5f, 0.7f, 1.f),
+    outTex[index] = lerp(saturate(float4(1.f, w, w, 1.f) * pow(rho[0], 16) * 0.0001f), float4(0.15f, 0.15f, 0.15f, 1.f),
     saturate((inTex[index]).r * 2));
 }

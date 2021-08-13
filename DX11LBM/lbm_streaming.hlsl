@@ -7,12 +7,12 @@ static const int2 v[9] = { { 1, 1 }, { 1, 0 }, { 1, -1 }, { 0, 1 }, { 0, 0 }, { 
 
 void bounceBack(uint2 index)
 {
-    if (inTex[index].w /*|| index.y == 0 || index.y == 599*/)
+    if (inTex[index].w>0.1f)
     {
 		[unroll(9)]
         for (uint i = 0; i < 9; i++)
         {
-            f_out[uint3(index, i)] = f_in[uint3(index, 8 - i)];
+            f_in[uint3(index+v[i], 8-i)] = f_in[uint3(index, i)];
         }
     }
 }
@@ -20,9 +20,9 @@ void bounceBack(uint2 index)
 
 uint2 cycle(int2 index, int2 v, int2 size)
 {
-    //return index + v;
+    return index + v;
     //return (size + index + v) % size;
-    return uint2(index.x + v.x, (size.y + index.y + v.y) % size.y);
+    //return uint2(index.x + v.x, (size.y + index.y + v.y) % size.y);
 }
 
 void streaming(uint2 index)
@@ -39,7 +39,7 @@ void streaming(uint2 index)
 void main(uint3 DTid : SV_DispatchThreadID)
 {
     const int2 index = DTid.xy;
-    bounceBack(index);
     streaming(index);
-    //DeviceMemoryBarrierWithGroupSync();
+    DeviceMemoryBarrier();
+    bounceBack(index);
 }
