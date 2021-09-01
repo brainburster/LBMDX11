@@ -14,7 +14,7 @@
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	if (InputManager::getInstance().HandleInput(hwnd, uMsg, wParam, lParam))
+	if (InputManager::getInstance().handleInput(hwnd, uMsg, wParam, lParam))
 	{
 		return 0;
 	}
@@ -24,14 +24,12 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 HWND createWnd(HINSTANCE hinst)
 {
 	// Register the window class.
-	const wchar_t CLASS_NAME[] = L"DX11_LBM_WIN_CLASS";
-	const wchar_t TITLE_NAME[] = L"DX11_LBM";
 
 	WNDCLASS wc = { 0 };
 
 	wc.lpfnWndProc = WindowProc;
 	wc.hInstance = hinst;
-	wc.lpszClassName = CLASS_NAME;
+	wc.lpszClassName = Setting::cls_name;
 
 	RegisterClass(&wc);
 
@@ -39,8 +37,8 @@ HWND createWnd(HINSTANCE hinst)
 
 	HWND hwnd = CreateWindowEx(
 		0,                              // Optional window styles.
-		CLASS_NAME,                     // Window class
-		TITLE_NAME,                     // Window text
+		Setting::cls_name,                     // Window class
+		Setting::wnd_name,                     // Window text
 		WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME,            // Window style
 
 		// Size and position
@@ -61,10 +59,10 @@ HWND createWnd(HINSTANCE hinst)
 	const int cyScreen = GetSystemMetrics(SM_CYSCREEN);
 
 	RECT rect{};
-	rect.left = (cxScreen - EWndSize::width) / 2;
-	rect.right = (cxScreen + EWndSize::width) / 2;
-	rect.top = (cyScreen - EWndSize::height) / 2;
-	rect.bottom = (cyScreen + EWndSize::height) / 2;
+	rect.left = (cxScreen - Setting::width) / 2;
+	rect.right = (cxScreen + Setting::width) / 2;
+	rect.top = (cyScreen - Setting::height) / 2;
+	rect.bottom = (cyScreen + Setting::height) / 2;
 
 	AdjustWindowRectEx(&rect, WS_OVERLAPPEDWINDOW, 0, 0);
 	MoveWindow(hwnd, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, true);
@@ -83,8 +81,8 @@ auto createDeviceAndSwapChain(HWND hwnd) -> std::tuple<ID3D11Device*, IDXGISwapC
 	DXGI_SWAP_CHAIN_DESC swap_chain_desc{};
 	IDXGISwapChain* swap_chain;
 
-	swap_chain_desc.BufferDesc.Width = EWndSize::width;
-	swap_chain_desc.BufferDesc.Height = EWndSize::height;
+	swap_chain_desc.BufferDesc.Width = Setting::width;
+	swap_chain_desc.BufferDesc.Height = Setting::height;
 	swap_chain_desc.BufferDesc.RefreshRate.Numerator = 60;
 	swap_chain_desc.BufferDesc.RefreshRate.Denominator = 1;
 	swap_chain_desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;

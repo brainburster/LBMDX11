@@ -7,7 +7,7 @@ static const int2 v[9] = { { 1, 1 }, { 1, 0 }, { 1, -1 }, { 0, 1 }, { 0, 0 }, { 
 
 void bounceBack(uint2 index)
 {
-    if (inTex[index].w>0.1f)
+    if (inTex[index].w > 0.1f/* || index.y == 0 || index.y == 599*/)
     {
 		[unroll(9)]
         for (uint i = 0; i < 9; i++)
@@ -20,8 +20,7 @@ void bounceBack(uint2 index)
 
 uint2 cycle(int2 index, int2 v, int2 size)
 {
-    return index + v;
-    //return (size + index + v) % size;
+    return (size + index + v) % size;
     //return uint2(index.x + v.x, (size.y + index.y + v.y) % size.y);
 }
 

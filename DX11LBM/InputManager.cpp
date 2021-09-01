@@ -46,7 +46,7 @@ InputManager& InputManager::getInstance()
 	return reinterpret_cast<InputManager&>(std::move(instance));
 }
 
-bool InputManager::HandleInput(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+bool InputManager::handleInput(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg)
 	{

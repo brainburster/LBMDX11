@@ -15,8 +15,8 @@ public:
 	void setKey(size_t key, bool down);
 	void setMouseBtn(size_t button, bool down);
 	void setMousePos(int x, int y);
+	bool handleInput(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 	static InputManager& getInstance();
-	bool HandleInput(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 private:
 	struct Data;
 	std::unique_ptr<Data> data;

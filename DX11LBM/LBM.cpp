@@ -70,8 +70,6 @@ private:
 		BYTE color[4];
 	};
 
-	void smooth_points(Spot&& a, Spot&& b);
-
 	std::list<Spot> point_buffer;
 };
 
@@ -120,7 +118,7 @@ void LBM::IMPL::init()
 
 	context->CSSetShader(cs_init.Get(), 0, 0);
 	context->CSSetUnorderedAccessViews(0, 1, uav_tex_array_f0.GetAddressOf(), 0);
-	context->Dispatch(EWndSize::width, EWndSize::height, 1);
+	context->Dispatch(Setting::width, Setting::height, 1);
 
 	context->CSSetShaderResources(0, 1, srv_tex_in.GetAddressOf());
 	context->CSSetUnorderedAccessViews(0, 1, uav_tex_out.GetAddressOf(), 0);
@@ -148,8 +146,8 @@ void LBM::IMPL::buildResource()
 void LBM::IMPL::createF0()
 {
 	D3D11_TEXTURE2D_DESC desc = { 0 };
-	desc.Width = EWndSize::width;
-	desc.Height = EWndSize::height;
+	desc.Width = Setting::width;
+	desc.Height = Setting::height;
 	desc.ArraySize = 9;
 	desc.Format = DXGI_FORMAT_R32_FLOAT;
 	desc.Usage = D3D11_USAGE_DEFAULT;
@@ -169,8 +167,8 @@ void LBM::IMPL::createF0()
 void LBM::IMPL::createF1()
 {
 	D3D11_TEXTURE2D_DESC desc = { 0 };
-	desc.Width = EWndSize::width;
-	desc.Height = EWndSize::height;
+	desc.Width = Setting::width;
+	desc.Height = Setting::height;
 	desc.ArraySize = 9;
 	desc.Format = DXGI_FORMAT_R32_FLOAT;
 	desc.Usage = D3D11_USAGE_DEFAULT;
@@ -218,8 +216,8 @@ void LBM::IMPL::createF1UAV()
 void LBM::IMPL::createOutTexture()
 {
 	D3D11_TEXTURE2D_DESC desc = { 0 };
-	desc.Width = EWndSize::width;
-	desc.Height = EWndSize::height;
+	desc.Width = Setting::width;
+	desc.Height = Setting::height;
 	desc.ArraySize = 1;
 	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	desc.Usage = D3D11_USAGE_DEFAULT;
@@ -266,8 +264,8 @@ void LBM::IMPL::createInTextureSRV()
 void LBM::IMPL::createInTexture()
 {
 	D3D11_TEXTURE2D_DESC desc = { 0 };
-	desc.Width = EWndSize::width;
-	desc.Height = EWndSize::height;
+	desc.Width = Setting::width;
+	desc.Height = Setting::height;
 	desc.ArraySize = 1;
 	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	desc.Usage = D3D11_USAGE_DYNAMIC;
@@ -363,7 +361,7 @@ void LBM::IMPL::draw()
 {
 	//fence();
 	context->CSSetShader(cs_visualization.Get(), 0, 0);
-	context->Dispatch(EWndSize::width, EWndSize::height, 1);
+	context->Dispatch(Setting::width, Setting::height, 1);
 	//fence();
 	context->CopyResource(back_buffer.Get(), tex_out.Get());
 	swap_chain->Present(0, 0);
@@ -372,27 +370,38 @@ void LBM::IMPL::draw()
 void LBM::IMPL::handleInput()
 {
 	static bool last_lbtn_down = false;
+	static HWND hwnd = FindWindow(Setting::cls_name, Setting::wnd_name);
 	InputManager& input = InputManager::getInstance();
 
 	if (input.mouseBtnDown(0))
 	{
-		const Pos pos = input.getMousePos();
+		Pos pos = input.getMousePos();
+		RECT rect = {};
+		DXGI_OUTPUT_DESC* desc;
+		GetClientRect(hwnd, &rect);
+		std::get<0>(pos) = std::get<0>(pos) * Setting::width / (rect.right - rect.left);
+		std::get<1>(pos) = std::get<1>(pos) * Setting::height / (rect.bottom - rect.top);
+
 		if (point_buffer.size() > 0)
 		{
 			decltype(auto) old = point_buffer.back();
 			point_buffer.pop_back();
-			//smooth_points(std::move(old), { pos,20,{213,213,213,255} });
 		}
 		point_buffer.push_back({ pos,20,{213,213,213,255} });
 	}
 	else if (input.mouseBtnDown(2))
 	{
-		const Pos pos = input.getMousePos();
+		Pos pos = input.getMousePos();
+		//auto [x, y] = pos;
+		RECT rect = {};
+		GetClientRect(hwnd, &rect);
+		std::get<0>(pos) = std::get<0>(pos) * Setting::width / (rect.right - rect.left);
+		std::get<1>(pos) = std::get<1>(pos) * Setting::height / (rect.bottom - rect.top);
+
 		if (point_buffer.size() > 0)
 		{
 			decltype(auto) old = point_buffer.back();
 			point_buffer.pop_back();
-			//smooth_points(std::move(old), { pos,20,{0,0,0,0} });
 		}
 		point_buffer.push_back({ pos,20,{0,0,0,0} });
 	}
@@ -404,11 +413,11 @@ void LBM::IMPL::update()
 {
 	fence();
 	context->CSSetShader(cs_lbm_collision.Get(), 0, 0);
-	context->Dispatch(EWndSize::width, EWndSize::height, 1);
+	context->Dispatch(Setting::width, Setting::height, 1);
 
 	fence();
 	context->CSSetShader(cs_lbm_streaming.Get(), 0, 0);
-	context->Dispatch(EWndSize::width, EWndSize::height, 1);
+	context->Dispatch(Setting::width, Setting::height, 1);
 	//...
 }
 
@@ -421,7 +430,7 @@ void LBM::IMPL::draw_point()
 {
 	static size_t time = 0;
 
-	if (time++ % 4)
+	if (time++ % 2)
 	{
 		return;
 	}
@@ -450,7 +459,7 @@ void LBM::IMPL::draw_point()
 				int xx = x + j;
 				int yy = y + i;
 
-				if (xx >= EWndSize::width || xx < 0 || yy >= EWndSize::height || yy < 0)
+				if (xx >= Setting::width || xx < 0 || yy >= Setting::height || yy < 0)
 				{
 					continue;
 				}
@@ -463,32 +472,4 @@ void LBM::IMPL::draw_point()
 	context->Unmap(tex_in.Get(), 0);
 
 	point_buffer.clear();
-}
-
-void LBM::IMPL::smooth_points(Spot&& a, Spot&& b)
-{
-	const Pos a_pos = a.pos;
-	const Pos b_pos = b.pos;
-	const int a_x = std::get<0>(a_pos);
-	const int a_y = std::get<1>(a_pos);
-	const int b_x = std::get<0>(b_pos);
-	const int b_y = std::get<1>(b_pos);
-	const int d = (a_x - b_x) * (a_x - b_x) + (a_y - b_y) * (a_y - b_y);
-	if (d > 50)
-	{
-		const int _x = b_x - a_x;
-		const int _y = b_y - a_y;
-		const int _x_1 = a_x + _x / 3;
-		const int _y_1 = a_y + _y / 3;
-		const int _x_2 = a_x + _x * 2 / 3;
-		const int _y_2 = a_y + _y * 2 / 3;
-		Spot _a = { {_x_1,_y_1},a.size,{a.color[0],a.color[1],a.color[2],a.color[3]} };
-		Spot _b = { {_x_2,_y_2},b.size,{b.color[0],b.color[1],b.color[2],b.color[3]} };
-
-		smooth_points(std::move(a), std::move(_a));
-		smooth_points(std::move(_b), std::move(b));
-		return;
-	}
-	point_buffer.push_back(std::move(a));
-	point_buffer.push_back(std::move(b));
 }
