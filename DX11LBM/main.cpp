@@ -159,8 +159,6 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPreInstance, _I
 	auto init_lbm = [&](ID3D11Device* device, IDXGISwapChain* swap_chain, ID3D11DeviceContext* context) { return lbm.init(device, swap_chain, context); };
 	auto get_lbm_process = [&] { return std::bind(&LBM::process, &lbm); };
 
-	//msvc下 无法识别 bind_expression 原因是 msvc 的 functional 头文件中的 tuple_element 模板类中使用了 static_assert 而 decltype 居然会触发static_assert, 破坏了 SFINEA 原则,
-	//使用c++17的invoke_result或者if constexpr或许可以解决，但是我想让它兼容c++11,所以暂时我不管了
 	auto app_process = chaincall::pipe() >> createWnd >> createDeviceAndSwapChain >> init_lbm >> get_lbm_process >> msgLoop;
 
 	try

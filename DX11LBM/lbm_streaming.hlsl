@@ -21,7 +21,6 @@ void bounceBack(uint2 index)
 uint2 cycle(int2 index, int2 v, int2 size)
 {
     return (size + index + v) % size;
-    //return uint2(index.x + v.x, (size.y + index.y + v.y) % size.y);
 }
 
 void streaming(uint2 index)

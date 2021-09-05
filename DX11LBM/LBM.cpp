@@ -73,7 +73,7 @@ private:
 	std::list<Spot> point_buffer;
 };
 
-LBM::LBM() : pimpl{ new LBM::IMPL{} }
+LBM::LBM() : pimpl{ std::make_unique<IMPL>() }
 {
 }
 
@@ -359,10 +359,10 @@ void LBM::IMPL::getBackBuffer()
 
 void LBM::IMPL::draw()
 {
-	//fence();
+	fence();
 	context->CSSetShader(cs_visualization.Get(), 0, 0);
 	context->Dispatch(Setting::width, Setting::height, 1);
-	//fence();
+	fence();
 	context->CopyResource(back_buffer.Get(), tex_out.Get());
 	swap_chain->Present(0, 0);
 }
@@ -387,7 +387,7 @@ void LBM::IMPL::handleInput()
 			decltype(auto) old = point_buffer.back();
 			point_buffer.pop_back();
 		}
-		point_buffer.push_back({ pos,20,{213,213,213,255} });
+		point_buffer.push_back({ pos,30,{213,213,213,255} });
 	}
 	else if (input.mouseBtnDown(2))
 	{
@@ -403,7 +403,7 @@ void LBM::IMPL::handleInput()
 			decltype(auto) old = point_buffer.back();
 			point_buffer.pop_back();
 		}
-		point_buffer.push_back({ pos,20,{0,0,0,0} });
+		point_buffer.push_back({ pos,10,{0,0,0,0} });
 	}
 
 	draw_point();
@@ -418,6 +418,8 @@ void LBM::IMPL::update()
 	fence();
 	context->CSSetShader(cs_lbm_streaming.Get(), 0, 0);
 	context->Dispatch(Setting::width, Setting::height, 1);
+
+	Sleep(1); //不然gpu占用会达到99%
 	//...
 }
 
@@ -428,13 +430,7 @@ void LBM::IMPL::clear()
 
 void LBM::IMPL::draw_point()
 {
-	static size_t time = 0;
-
-	if (time++ % 2)
-	{
-		return;
-	}
-
+	fence();
 	if (FAILED(context->Map(tex_in.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &ms_tex_in)))
 	{
 		throw std::runtime_error("Failed to Map");
@@ -452,7 +448,7 @@ void LBM::IMPL::draw_point()
 		{
 			for (int j = -size / 2; j < size / 2; j++)
 			{
-				if ((i * i + j * j) > (size / 2) * (size / 2))
+				if ((i * i + j * j) > (size / 2) * (size / 2)-0.5f)
 				{
 					continue;
 				}

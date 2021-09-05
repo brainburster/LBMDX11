@@ -13,7 +13,7 @@ static const float w[9] =
 
 void collision(uint2 index)
 {
-    static const float omega =  1.96f;
+    static const float omega =  1.86f;
     
     float f[9] = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
 	[unroll(9)]
@@ -65,8 +65,8 @@ void collision(uint2 index)
     {
         u += v[k] * f[k];
     }
-    u /= rho;
-    //u.y += 1e-6;
+    u /= rho + u * u * 1e-3f;
+    
     if (index.x == 0)
     {
         u = float2(0.09f, 0);
