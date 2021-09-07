@@ -71,6 +71,7 @@ private:
 	};
 
 	std::list<Spot> point_buffer;
+	Pos last = { -1,-1 };
 };
 
 LBM::LBM() : pimpl{ std::make_unique<IMPL>() }
@@ -371,11 +372,13 @@ void LBM::IMPL::handleInput()
 {
 	static bool last_lbtn_down = false;
 	static HWND hwnd = FindWindow(Setting::cls_name, Setting::wnd_name);
+	static bool btndown = false;
 	InputManager& input = InputManager::getInstance();
-
+	
 	if (input.mouseBtnDown(0))
 	{
 		Pos pos = input.getMousePos();
+		btndown = true;
 		RECT rect = {};
 		DXGI_OUTPUT_DESC* desc;
 		GetClientRect(hwnd, &rect);
@@ -387,11 +390,12 @@ void LBM::IMPL::handleInput()
 			decltype(auto) old = point_buffer.back();
 			point_buffer.pop_back();
 		}
-		point_buffer.push_back({ pos,30,{213,213,213,255} });
+		point_buffer.push_back({ pos,20,{213,213,213,255} });
 	}
 	else if (input.mouseBtnDown(2))
 	{
 		Pos pos = input.getMousePos();
+		btndown = true;
 		//auto [x, y] = pos;
 		RECT rect = {};
 		GetClientRect(hwnd, &rect);
@@ -405,7 +409,10 @@ void LBM::IMPL::handleInput()
 		}
 		point_buffer.push_back({ pos,10,{0,0,0,0} });
 	}
-
+	if (btndown && !input.mouseBtnDown(0) && !input.mouseBtnDown(2)) {
+		btndown = false;
+		last = { -1,-1 };
+	}
 	draw_point();
 }
 
@@ -440,15 +447,12 @@ void LBM::IMPL::draw_point()
 	int x = 0;
 	int y = 0;
 
-	for (const Spot& spot : point_buffer)
-	{
-		std::tie(x, y) = spot.pos;
-		const int size = spot.size;
+	const auto plot = [&](int x, int y,int size, const void* color) {
 		for (int i = -size / 2; i < size / 2; i++)
 		{
 			for (int j = -size / 2; j < size / 2; j++)
 			{
-				if ((i * i + j * j) > (size / 2) * (size / 2)-0.5f)
+				if ((i * i + j * j) > (size / 2.f) * (size / 2.f) - 0.5f)
 				{
 					continue;
 				}
@@ -459,11 +463,45 @@ void LBM::IMPL::draw_point()
 				{
 					continue;
 				}
-
 				int index = ms_tex_in.RowPitch * yy + xx * 4;
-				memcpy(p_data + index, &spot.color, sizeof(BYTE) * 4);
+				memcpy(p_data + index, color, sizeof(BYTE) * 4);
 			}
 		}
+	};
+
+	//bresenham's lineÀ„∑®, https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
+	const auto plot_line = [&](int x0, int y0, int x1, int y1, int size, const void* color) {
+		const int dx = abs(x1 - x0);
+		const int dy = -abs(y1 - y0);
+		const int sx = x0 < x1 ? 1 : -1;
+		const int sy = y0 < y1 ? 1 : -1;
+		int err = dx + dy; /* error value e_xy */
+		while (true) {
+			plot(x0, y0, size, color);
+			if (x0 == x1 && y0 == y1) break;
+			const int e2 = 2 * err;
+			/* e_xy+e_x > 0 */
+			if (e2 >= dy) {
+				err += dy;
+				x0 += sx;
+			}
+			/* e_xy+e_y < 0 */
+			if (e2 <= dx) {
+				err += dx;
+				y0 += sy;
+			}
+		}
+	};
+
+	for (const Spot& spot : point_buffer)
+	{
+		std::tie(x, y) = spot.pos;
+		if (std::get<0>(last) < 0) {
+			last = { x,y };
+		}
+		plot_line(std::get<0>(last), std::get<1>(last), x, y, spot.size, &spot.color);
+		//plot(xx, yy, &spot.color);
+		last = { x,y };
 	}
 	context->Unmap(tex_in.Get(), 0);
 
