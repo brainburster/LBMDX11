@@ -28,12 +28,12 @@ void streaming(uint2 index)
 	[unroll(9)]
     for (uint i = 0; i < 9; i++)
     {
-        uint2 id = cycle(index, v[8-i], int2(800, 600));
+        uint2 id = cycle(index, v[8-i], int2(640, 320));
         f_in[uint3(id, i)] = f_out[uint3(index, i)];
     }
 }
 
-[numthreads(1, 1, 1)]
+[numthreads(32, 32, 1)]
 void main(uint3 DTid : SV_DispatchThreadID)
 {
     const int2 index = DTid.xy;

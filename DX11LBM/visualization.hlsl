@@ -5,12 +5,12 @@ RWTexture2DArray<float> f_out : register(u2);
 
 static const int2 v[9] = { { 1, 1 }, { 1, 0 }, { 1, -1 }, { 0, 1 }, { 0, 0 }, { 0, -1 }, { -1, 1 }, { -1, 0 }, { -1, -1 } };
 
-[numthreads(1, 1, 1)]
+[numthreads(32, 32, 1)]
 void main( uint3 DTid : SV_DispatchThreadID )
 {
     const int2 index = DTid.xy;
     
-    if (index.x < 1 || index.x > 798 || index.y < 1 || index.y > 598)
+    if (index.x < 1 || index.x > 638 || index.y < 1 || index.y > 318)
     {
         return;
     }

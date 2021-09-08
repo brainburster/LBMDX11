@@ -119,7 +119,7 @@ void LBM::IMPL::init()
 
 	context->CSSetShader(cs_init.Get(), 0, 0);
 	context->CSSetUnorderedAccessViews(0, 1, uav_tex_array_f0.GetAddressOf(), 0);
-	context->Dispatch(Setting::width, Setting::height, 1);
+	context->Dispatch(Setting::width / 32, Setting::height / 32, 1);
 
 	context->CSSetShaderResources(0, 1, srv_tex_in.GetAddressOf());
 	context->CSSetUnorderedAccessViews(0, 1, uav_tex_out.GetAddressOf(), 0);
@@ -362,7 +362,7 @@ void LBM::IMPL::draw()
 {
 	fence();
 	context->CSSetShader(cs_visualization.Get(), 0, 0);
-	context->Dispatch(Setting::width, Setting::height, 1);
+	context->Dispatch(Setting::width / 32, Setting::height / 32, 1);
 	fence();
 	context->CopyResource(back_buffer.Get(), tex_out.Get());
 	swap_chain->Present(0, 0);
@@ -374,13 +374,13 @@ void LBM::IMPL::handleInput()
 	static HWND hwnd = FindWindow(Setting::cls_name, Setting::wnd_name);
 	static bool btndown = false;
 	InputManager& input = InputManager::getInstance();
-	
+
 	if (input.mouseBtnDown(0))
 	{
 		Pos pos = input.getMousePos();
 		btndown = true;
 		RECT rect = {};
-		DXGI_OUTPUT_DESC* desc;
+		DXGI_OUTPUT_DESC* desc = nullptr;
 		GetClientRect(hwnd, &rect);
 		std::get<0>(pos) = std::get<0>(pos) * Setting::width / (rect.right - rect.left);
 		std::get<1>(pos) = std::get<1>(pos) * Setting::height / (rect.bottom - rect.top);
@@ -420,13 +420,13 @@ void LBM::IMPL::update()
 {
 	fence();
 	context->CSSetShader(cs_lbm_collision.Get(), 0, 0);
-	context->Dispatch(Setting::width, Setting::height, 1);
+	context->Dispatch(Setting::width / 32, Setting::height / 32, 1);
 
 	fence();
 	context->CSSetShader(cs_lbm_streaming.Get(), 0, 0);
-	context->Dispatch(Setting::width, Setting::height, 1);
+	context->Dispatch(Setting::width / 32, Setting::height / 32, 1);
 
-	Sleep(1); //不然gpu占用会达到99%
+	//Sleep(1); //减少cpu占用
 	//...
 }
 
@@ -447,7 +447,7 @@ void LBM::IMPL::draw_point()
 	int x = 0;
 	int y = 0;
 
-	const auto plot = [&](int x, int y,int size, const void* color) {
+	const auto plot = [&](int x, int y, int size, const void* color) {
 		for (int i = -size / 2; i < size / 2; i++)
 		{
 			for (int j = -size / 2; j < size / 2; j++)

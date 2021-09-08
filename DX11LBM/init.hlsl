@@ -1,6 +1,6 @@
 RWTexture2DArray<float> f : register(u0);
 
-[numthreads(1, 1, 1)]
+[numthreads(32, 32, 1)]
 void main( uint3 DTid : SV_DispatchThreadID )
 {
     const uint2 index = DTid.xy;

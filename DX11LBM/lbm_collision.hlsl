@@ -22,35 +22,12 @@ void collision(uint2 index)
         f[i] = f_in[uint3(index, i)];
     }
     
-    if (index.x == 799)
+    if (index.x == 639)
     {
         f[0] = f_in[uint3(index + int2(-1, 0), 0)];
         f[1] = f_in[uint3(index + int2(-1, 0), 1)];
         f[2] = f_in[uint3(index + int2(-1, 0), 2)];
     }
-
-    //if (index.y == 0)
-    //{
-    //    f[2] = f_in[uint3(index + int2(0, 1), 2)];
-    //    f[5] = f_in[uint3(index + int2(0, 1), 5)];
-    //    f[8] = f_in[uint3(index + int2(0, 1), 8)];
-    //}
-    //else if (index.y == 599)
-    //{
-    //    f[0] = f_in[uint3(index + int2(0, -1), 0)];
-    //    f[3] = f_in[uint3(index + int2(0, -1), 3)];
-    //    f[6] = f_in[uint3(index + int2(0, -1), 6)];
-    //}
-    
-    //if (index.x == 799 && index.y == 0)
-    //{
-    //    f[2] = f_in[uint3(index + int2(-1, 1), 2)];
-    //}
-    //else if (index.x == 799 && index.y == 599)
-    //{
-    //    f[0] = f_in[uint3(index + int2(-1, -1), 0)];
-    //}
-    
     
     float rho = 0;
     [unroll(9)]
@@ -107,7 +84,7 @@ void collision(uint2 index)
     }
 }
 
-[numthreads(1, 1, 1)]
+[numthreads(32, 32, 1)]
 void main( uint3 DTid : SV_DispatchThreadID )
 {
     const int2 index = DTid.xy;
