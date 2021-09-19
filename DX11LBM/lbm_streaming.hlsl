@@ -13,7 +13,7 @@ void bounceBack(uint2 index)
 		[unroll(9)]
         for (uint i = 0; i < 9; i++)
         {
-            f_in[uint3(index+v[i], 8-i)] = f_in[uint3(index, i)];
+            f_in[uint3(index + v[i], 8 - i)] = f_in[uint3(index, i)];
         }
     }
 }
@@ -38,12 +38,10 @@ void streaming(uint2 index)
 void main(uint3 DTid : SV_DispatchThreadID)
 {
     const int2 index = DTid.xy;
-    GroupMemoryBarrier();
     streaming(index);
-    DeviceMemoryBarrier();
+    AllMemoryBarrier();
     bounceBack(index);
-    
-    
+    //AllMemoryBarrier();
     if (index.x == 639)
     {
         f_in[uint3(index, 0)] = f_in[uint3(index + int2(-1, 0), 0)];

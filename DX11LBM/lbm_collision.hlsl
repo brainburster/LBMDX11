@@ -35,7 +35,7 @@ void collision(uint2 index)
     {
         u += v[k] * f[k];
     }
-    u /= rho + u * u * 1e-3f;
+    u /= rho + u * u * 1e-6f;
     
     if (index.x == 0)
     {
@@ -81,8 +81,5 @@ void collision(uint2 index)
 void main( uint3 DTid : SV_DispatchThreadID )
 {
     const int2 index = DTid.xy;
-    if (inTex[index].w<0.1f)
-    {
-        collision(index);
-    }
+    collision(index);
 }
