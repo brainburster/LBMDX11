@@ -5,9 +5,10 @@ RWTexture2DArray<float> f_out : register(u2);
 
 static const int2 v[9] = { { 1, 1 }, { 1, 0 }, { 1, -1 }, { 0, 1 }, { 0, 0 }, { 0, -1 }, { -1, 1 }, { -1, 0 }, { -1, -1 } };
 
+
 void bounceBack(uint2 index)
 {
-    if (inTex[index].w > 0.1f/* || index.y == 0 || index.y == 599*/)
+    if (inTex[index].w > 0.1f)
     {
 		[unroll(9)]
         for (uint i = 0; i < 9; i++)
@@ -37,7 +38,24 @@ void streaming(uint2 index)
 void main(uint3 DTid : SV_DispatchThreadID)
 {
     const int2 index = DTid.xy;
+    GroupMemoryBarrier();
     streaming(index);
     DeviceMemoryBarrier();
     bounceBack(index);
+    
+    
+    if (index.x == 639)
+    {
+        f_in[uint3(index, 0)] = f_in[uint3(index + int2(-1, 0), 0)];
+        f_in[uint3(index, 1)] = f_in[uint3(index + int2(-1, 0), 1)];
+        f_in[uint3(index, 2)] = f_in[uint3(index + int2(-1, 0), 2)];
+        if (index.y == 0)
+        {
+            f_in[uint3(index, 0)] = f_in[uint3(index + int2(-1, -1), 0)];
+        }
+        if (index.y == 319)
+        {
+            f_in[uint3(index, 2)] = f_in[uint3(index + int2(-1, 1), 2)];
+        }
+    }
 }

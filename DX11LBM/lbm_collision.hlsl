@@ -22,13 +22,6 @@ void collision(uint2 index)
         f[i] = f_in[uint3(index, i)];
     }
     
-    if (index.x == 639)
-    {
-        f[0] = f_in[uint3(index + int2(-1, 0), 0)];
-        f[1] = f_in[uint3(index + int2(-1, 0), 1)];
-        f[2] = f_in[uint3(index + int2(-1, 0), 2)];
-    }
-    
     float rho = 0;
     [unroll(9)]
     for (uint j = 0; j < 9; j++)
