@@ -418,12 +418,13 @@ void LBM::IMPL::handleInput()
 
 void LBM::IMPL::update()
 {
-	fence();
-	context->CSSetShader(cs_lbm_collision.Get(), 0, 0);
-	context->Dispatch(Setting::width / 32, Setting::height / 32, 1);
 
 	fence();
 	context->CSSetShader(cs_lbm_streaming.Get(), 0, 0);
+	context->Dispatch(Setting::width / 32, Setting::height / 32, 1);
+
+	fence();
+	context->CSSetShader(cs_lbm_collision.Get(), 0, 0);
 	context->Dispatch(Setting::width / 32, Setting::height / 32, 1);
 
 	//Sleep(1); //ºı…Ÿcpu’º”√

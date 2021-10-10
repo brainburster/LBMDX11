@@ -13,13 +13,13 @@ static const float w[9] =
 
 void collision(uint2 index)
 {
-    static const float omega =  1.86f;
+    static const float omega =  1.6f;
     
     float f[9] = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
 	[unroll(9)]
     for (uint i = 0; i < 9; i++)
     {
-        f[i] = f_in[uint3(index, i)];
+        f[i] = f_out[uint3(index, i)];
     }
     
     float rho = 0;
@@ -35,11 +35,10 @@ void collision(uint2 index)
     {
         u += v[k] * f[k];
     }
-    u /= rho + u * u * 1e-6f;
-    
+    u /= rho;
     if (index.x == 0)
     {
-        u = float2(0.09f, 0);
+        u = float2(0.07f, 0);
         rho = 1 / (1 - u.x) * (f[3] + f[4] + f[5] + (f[0] + f[1] + f[2]) * 2);
     }
     
@@ -73,7 +72,7 @@ void collision(uint2 index)
     [unroll(9)]
     for (uint n = 0; n < 9; n++)
     {
-        f_out[uint3(index, n)] = saturate(f[n] - omega * (f[n] - eq[n]));
+        f_in[uint3(index, n)] = saturate((1 - omega) * f[n] + omega * eq[n]);
     }
 }
 
