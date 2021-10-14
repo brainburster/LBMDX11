@@ -1,5 +1,3 @@
-# LBM_Learing
+# LBM学习
 
-## LBM学习
-
-![图片1](/picture.gif)
+![图片1](/capture.gif)
