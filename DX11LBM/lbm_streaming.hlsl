@@ -36,9 +36,12 @@ void main(uint3 DTid : SV_DispatchThreadID)
 
     if (index.x == 639)
     {
-        f[0] = f_in[uint3(index + int2(-1, 0), 0)];
-        f[1] = f_in[uint3(index + int2(-1, 0), 1)];
-        f[2] = f_in[uint3(index + int2(-1, 0), 2)];
+        //f[0] = f_in[uint3(index + int2(-1, 0), 0)];
+        //f[1] = f_in[uint3(index + int2(-1, 0), 1)];
+        //f[2] = f_in[uint3(index + int2(-1, 0), 2)];
+        f[0] = 0.5 * (f_in[uint3(index + int2(-1, 0), 0)] + f_in[uint3(index + int2(-2, 0), 0)]);
+        f[1] = 0.5 * (f_in[uint3(index + int2(-1, 0), 1)] + f_in[uint3(index + int2(-2, 0), 1)]);
+        f[2] = 0.5 * (f_in[uint3(index + int2(-1, 0), 2)] + f_in[uint3(index + int2(-2, 0), 2)]);;
     }
     
   	[unroll(9)]

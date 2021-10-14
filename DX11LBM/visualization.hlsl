@@ -45,7 +45,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
     //float3 a = { 0.8f - abs(w) * 25, 0.8f - du * 20, 0.8f - dv * 20 };
     //float3 a = 0.8f - abs(w) * 20;
     float2 v = u[4] / rho[4];
-    float3 a = length(v)*3.0;
+    float3 a = length(v)*5.0;
     
     outTex[index] = lerp(saturate(float4(a, 1.f)), float4(0.18f, 0.18f, 0.18f, 1.f), saturate((inTex[index]).r * 2));
 }
