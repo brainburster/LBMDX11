@@ -51,7 +51,6 @@ private:
 	ComPtr<ID3D11UnorderedAccessView> uav_tex_quantites;
 	ComPtr<ID3D11ShaderResourceView> srv_tex_quantites;
 	//
-
 	//控制点
 	//用于生成流体以及墙
 	struct ControlPoint
@@ -63,6 +62,7 @@ private:
 	ComPtr<ID3D11Buffer> buf_control_points;
 	ComPtr<ID3D11ShaderResourceView> srv_control_points;
 	ComPtr<ID3D11Buffer> cbuf_num_control_points;
+	ControlPoint last_control_point;
 
 	enum
 	{
@@ -70,7 +70,7 @@ private:
 		max_num_control_points = 128,
 	};
 public:
-	LBM_Multicomponent(decltype(dx11_wnd) wnd) : dx11_wnd{ wnd } {}
+	LBM_Multicomponent(decltype(dx11_wnd) wnd) : dx11_wnd{ wnd }, last_control_point{ {-1.f,-1.f},{-1.f,-1.f} }{}
 	//
 	void run()
 	{
