@@ -51,7 +51,10 @@
     <FxCompile Include="ps.hlsl">
       <Filter>shaders</Filter>
     </FxCompile>
-    <FxCompile Include="draw.hlsl">
+    <FxCompile Include="cs_draw.hlsl">
+      <Filter>shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="cs_lbm.hlsl">
       <Filter>shaders</Filter>
     </FxCompile>
   </ItemGroup>

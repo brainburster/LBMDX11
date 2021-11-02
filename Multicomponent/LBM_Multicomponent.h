@@ -33,23 +33,24 @@ private:
 	//根据控制点生成流体与墙
 	ComPtr<ID3D11ComputeShader> cs_draw;
 	//初始化
-	ComPtr<ID3D11ComputeShader> cs_init;
+	//ComPtr<ID3D11ComputeShader> cs_init;
 	//更新物理量
-	ComPtr<ID3D11ComputeShader> cs_update_quantities;
+	//ComPtr<ID3D11ComputeShader> cs_update_quantities;
 	//lbm-shan-chen模型
 	//collision
-	ComPtr<ID3D11ComputeShader> cs_lbm_collision;
+	//ComPtr<ID3D11ComputeShader> cs_lbm_collision;
 	//streaming
-	ComPtr<ID3D11ComputeShader> cs_lbm_streaming;
-	//储存3个组分的分布以及其他物理量如rho,u,psi(有效密度),F_k,
-	ComPtr<ID3D11Texture2D> tex_array_f_in[3];
-	ComPtr<ID3D11Texture2D> tex_array_f_out[3];
-	ComPtr<ID3D11UnorderedAccessView> uav_tex_array_f_in[3];
-	ComPtr<ID3D11UnorderedAccessView> uav_tex_array_f_out[3];
-	//混合流体的物理量,4个通道，rho,u,omega, 第四个通道<0表示墙，墙与普通格点之间的边将被视为反弹边界，这个边界将会被动态计算出来
-	ComPtr<ID3D11Texture2D> tex_quantities;
-	ComPtr<ID3D11UnorderedAccessView> uav_tex_quantites;
-	ComPtr<ID3D11ShaderResourceView> srv_tex_quantites;
+	//ComPtr<ID3D11ComputeShader> cs_lbm_streaming;
+	ComPtr<ID3D11ComputeShader> cs_lbm;
+	//储存2个组分的分布以及其他物理量如rho,u,psi(有效密度),F_k,
+	ComPtr<ID3D11Texture2D> tex_array_f_in[2];
+	ComPtr<ID3D11Texture2D> tex_array_f_out[2];
+	ComPtr<ID3D11UnorderedAccessView> uav_tex_array_f_in[2];
+	ComPtr<ID3D11UnorderedAccessView> uav_tex_array_f_out[2];
+	//4个通道分别表示不同组分的密度，第4个通道==0表示墙
+	ComPtr<ID3D11Texture2D> tex_display;
+	ComPtr<ID3D11UnorderedAccessView> uav_tex_display;
+	ComPtr<ID3D11ShaderResourceView> srv_tex_display;
 	//
 	//控制点
 	//用于生成流体以及墙
@@ -124,18 +125,14 @@ private:
 		//应用控制点
 		if (control_points.size() > 0)
 		{
-			ID3D11ShaderResourceView* null_srv = nullptr;
-			ID3D11UnorderedAccessView* null_uav = nullptr;
-			ctx->CSSetUnorderedAccessViews(6, 1, uav_tex_quantites.GetAddressOf(), 0);
-			ctx->PSSetShaderResources(0, 1, &null_srv);
 			update_control_point_buffer();
-			ctx->CSSetShader(cs_draw.Get(), NULL, 0);
 			control_points.clear();
-			ctx->Dispatch(width / 32 + 1, height / 32 + 1, 1);
-			ctx->CSSetUnorderedAccessViews(6, 1, &null_uav, 0);
-			ctx->PSSetShaderResources(0, 1, srv_tex_quantites.GetAddressOf());
+			ctx->CSSetShader(cs_draw.Get(), NULL, 0);
+			ctx->Dispatch((width - 1) / 32 + 1, (height - 1) / 32 + 1, 1);
 		}
-		//
+		////更新流体
+		ctx->CSSetShader(cs_lbm.Get(), NULL, 0);
+		ctx->Dispatch((width - 1) / 16 + 1, (height - 1) / 16 + 1, 1);
 	}
 
 	void render()
@@ -144,7 +141,16 @@ private:
 		constexpr float back_color[4] = { 0.f,0.f,0.f,1.f };
 		ctx->ClearRenderTargetView(dx11_wnd->GetRTV(), back_color);
 		ctx->ClearDepthStencilView(dx11_wnd->GetDsv(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.f, 0);
-		ctx->Draw(6, 0);
+
+		//解决同一个资源同时绑定srv和uav的冲突
+		ID3D11ShaderResourceView* null_srv = nullptr;
+		ID3D11UnorderedAccessView* null_uav = nullptr;
+		ctx->CSSetUnorderedAccessViews(4, 1, &null_uav, 0);
+		ctx->PSSetShaderResources(0, 1, srv_tex_display.GetAddressOf());
+		//绘制
+		ctx->Draw(4, 0);
+		ctx->CSSetUnorderedAccessViews(4, 1, uav_tex_display.GetAddressOf(), 0);
+		ctx->PSSetShaderResources(0, 1, &null_srv);
 		dx11_wnd->GetSwapChain()->Present(0, 0);
 	}
 	void handleInput() {}
@@ -167,9 +173,14 @@ private:
 		hr = device->CreatePixelShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, ps.GetAddressOf());
 		assert(SUCCEEDED(hr));
 
-		hr = D3DReadFileToBlob(L"shaders/draw.cso", blob.ReleaseAndGetAddressOf());
+		hr = D3DReadFileToBlob(L"shaders/cs_draw.cso", blob.ReleaseAndGetAddressOf());
 		assert(SUCCEEDED(hr));
 		hr = device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_draw.GetAddressOf());
+		assert(SUCCEEDED(hr));
+
+		hr = D3DReadFileToBlob(L"shaders/cs_lbm.cso", blob.ReleaseAndGetAddressOf());
+		assert(SUCCEEDED(hr));
+		hr = device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_lbm.GetAddressOf());
 		assert(SUCCEEDED(hr));
 	}
 	void init_resources()
@@ -181,7 +192,6 @@ private:
 		D3D11_UNORDERED_ACCESS_VIEW_DESC uav_desc = {};
 		D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
 
-		//物理量的 tex uav srv
 		tex_desc.Width = dx11_wnd->getWidth();
 		tex_desc.Height = dx11_wnd->getHeight();
 		tex_desc.ArraySize = 1;
@@ -198,11 +208,11 @@ private:
 		srv_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 		srv_desc.Texture2D.MipLevels = 1;
 
-		hr = device->CreateTexture2D(&tex_desc, 0, tex_quantities.GetAddressOf());
+		hr = device->CreateTexture2D(&tex_desc, 0, tex_display.GetAddressOf());
 		assert(SUCCEEDED(hr));
-		hr = device->CreateUnorderedAccessView(tex_quantities.Get(), &uav_desc, uav_tex_quantites.GetAddressOf());
+		hr = device->CreateUnorderedAccessView(tex_display.Get(), &uav_desc, uav_tex_display.GetAddressOf());
 		assert(SUCCEEDED(hr));
-		hr = device->CreateShaderResourceView(tex_quantities.Get(), &srv_desc, srv_tex_quantites.GetAddressOf());
+		hr = device->CreateShaderResourceView(tex_display.Get(), &srv_desc, srv_tex_display.GetAddressOf());
 		assert(SUCCEEDED(hr));
 
 		//分别创建3个组分个粒子分布以及宏观量的存储
@@ -221,10 +231,15 @@ private:
 		uav_desc.Texture2DArray.ArraySize = num_f_channels;
 		hr = device->CreateTexture2D(&tex_desc, 0, tex_array_f_in[0].GetAddressOf());
 		hr = device->CreateTexture2D(&tex_desc, 0, tex_array_f_in[1].GetAddressOf());
-		hr = device->CreateTexture2D(&tex_desc, 0, tex_array_f_in[2].GetAddressOf());
 		hr = device->CreateTexture2D(&tex_desc, 0, tex_array_f_out[0].GetAddressOf());
 		hr = device->CreateTexture2D(&tex_desc, 0, tex_array_f_out[1].GetAddressOf());
-		hr = device->CreateTexture2D(&tex_desc, 0, tex_array_f_out[2].GetAddressOf());
+		assert(SUCCEEDED(hr));
+		hr = device->CreateUnorderedAccessView(tex_array_f_in[0].Get(), &uav_desc, uav_tex_array_f_in[0].GetAddressOf());
+		hr = device->CreateUnorderedAccessView(tex_array_f_in[1].Get(), &uav_desc, uav_tex_array_f_in[1].GetAddressOf());
+		hr = device->CreateUnorderedAccessView(tex_array_f_out[0].Get(), &uav_desc, uav_tex_array_f_out[0].GetAddressOf());
+		hr = device->CreateUnorderedAccessView(tex_array_f_out[1].Get(), &uav_desc, uav_tex_array_f_out[1].GetAddressOf());
+		assert(SUCCEEDED(hr));
+
 		//...
 
 		//创建控制点buffur
@@ -287,13 +302,12 @@ private:
 
 		ctx->CSSetUnorderedAccessViews(0, 1, uav_tex_array_f_in[0].GetAddressOf(), 0);
 		ctx->CSSetUnorderedAccessViews(1, 1, uav_tex_array_f_in[1].GetAddressOf(), 0);
-		ctx->CSSetUnorderedAccessViews(2, 1, uav_tex_array_f_in[2].GetAddressOf(), 0);
-		ctx->CSSetUnorderedAccessViews(3, 1, uav_tex_array_f_out[0].GetAddressOf(), 0);
-		ctx->CSSetUnorderedAccessViews(4, 1, uav_tex_array_f_out[1].GetAddressOf(), 0);
-		ctx->CSSetUnorderedAccessViews(5, 1, uav_tex_array_f_out[2].GetAddressOf(), 0);
+		ctx->CSSetUnorderedAccessViews(2, 1, uav_tex_array_f_out[0].GetAddressOf(), 0);
+		ctx->CSSetUnorderedAccessViews(3, 1, uav_tex_array_f_out[1].GetAddressOf(), 0);
+		ctx->CSSetUnorderedAccessViews(4, 1, uav_tex_display.GetAddressOf(), 0);
 		ctx->CSSetShaderResources(0, 1, srv_control_points.GetAddressOf());
 		ctx->CSSetConstantBuffers(0, 1, cbuf_num_control_points.GetAddressOf());
-		ctx->PSSetShaderResources(0, 1, srv_tex_quantites.GetAddressOf());
+		//ctx->PSSetShaderResources(0, 1, srv_tex_display.GetAddressOf());
 	}
 
 	void add_control_point(XMFLOAT2 pos, XMFLOAT2 data);
