@@ -23,7 +23,13 @@ void main( uint3 DTid : SV_DispatchThreadID )
             }
             else if (cp.data == 1.0)
             {
-                f_in[0][uint3(index.xy, 0)] = 1.0;
+                f_in[0][uint3(index.xy, 0)] = 1.0;                
+            }
+            else if (cp.data == 0.0)
+            {
+                uav_display[index] = float4(uav_display[index].xyz, 0.0f);
+                f_in[0][uint3(index.xy, 0)] = 0.0f;
+                f_in[1][uint3(index.xy, 0)] = 0.0f;
             }
         }
     }

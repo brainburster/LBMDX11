@@ -18,7 +18,7 @@ static const float w[9] =
 static const uint oppo[9] = {
     0, 3, 4, 1, 2, 7, 8, 5, 6
 };
-static const float k = 1.8f;
+static const float k = 1.2f;
 
 bool is_wall(uint2 pos)
 {
@@ -30,7 +30,7 @@ bool is_wall(uint2 pos)
 }
 
 [numthreads(16, 16, 1)]
-void main( uint3 DTid : SV_DispatchThreadID )
+void main(uint3 DTid : SV_DispatchThreadID)
 {
     const uint2 pos = DTid.xy;
     float f0[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -41,7 +41,6 @@ void main( uint3 DTid : SV_DispatchThreadID )
     f0[0] = f_in[0][uint3(pos, 0)];
     for (i = 1; i < 9; i++)
     {
-        uint2 pos_1 = pos + v[i];
         uint2 pos_2 = pos + v[oppo[i]];
         bool flag2 = is_wall(pos_2);
         if (flag1 && !flag2)
@@ -59,7 +58,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
         }
     }
     
-    //计算物理量
+    //计算受力
     //...
     
     
@@ -73,14 +72,14 @@ void main( uint3 DTid : SV_DispatchThreadID )
         u0 += f0[0] * v[0];
     }
     u0 /= rho0;
-    u0.y += 0.01;
+    u0.y += 0.005;
     //float rho1 = f1[0] + f1[1] + f1[2] + f1[3] + f1[4] + f1[5] + f1[6] + f1[7] + f1[8];
     //f_in[0][uint3(pos.xy, 9)] = rho0;
     //f_in[1][uint3(pos.xy, 9)] = rho1;
     
     
     //碰撞
-    float u_sqr = 1.5 * (u0.x*u0.x+u0.y*u0.y);
+    float u_sqr = 1.5 * (u0.x * u0.x + u0.y * u0.y);
     for (i = 0; i < 9; i++)
     {
         float vu = 3.0 * (v[i].x * u0.x + v[i].y * u0.y);

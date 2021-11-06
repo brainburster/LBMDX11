@@ -43,6 +43,9 @@
     <None Include="cs_header.hlsli">
       <Filter>shaders</Filter>
     </None>
+    <None Include="cs_lbm_header.hlsli">
+      <Filter>shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="vs.hlsl">
@@ -55,6 +58,21 @@
       <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="cs_lbm.hlsl">
+      <Filter>shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="cs_lbm_collision.hlsl">
+      <Filter>shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="cs_lbm_streaming.hlsl">
+      <Filter>shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="cs_lbm_visualization.hlsl">
+      <Filter>shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="cs_lbm_force_calculation.hlsl">
+      <Filter>shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="cs_lbm_moment_update.hlsl">
       <Filter>shaders</Filter>
     </FxCompile>
   </ItemGroup>

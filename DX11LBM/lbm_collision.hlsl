@@ -35,8 +35,11 @@ void collision(uint2 index)
     {
         u += v[k] * f[k];
     }
+
     u /= rho;
-    
+    const float g = 0.0001;
+    u.y += g*0.5;
+
     if (index.x == 0)
     {
         u = float2(0.07f, 0);
@@ -68,11 +71,12 @@ void collision(uint2 index)
             f[i] = eq[i] + f[8 - i] - eq[8 - i];
         }
     }
-    
+    float Si = 0;
     [unroll(9)]
     for (uint n = 0; n < 9; n++)
     {
-        f_in[uint3(index, n)] = saturate((1 - omega) * f[n] + omega * eq[n]);
+        Si = (1 - 0.5*omega) * w[n] * dot(((v[n] - u) / 3 + dot(v[n],u)*v[n]/9), float2(0.0, g / rho));
+        f_in[uint3(index, n)] = saturate((1 - omega) * f[n] + omega * eq[n])+ Si;
     }
 }
 

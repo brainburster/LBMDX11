@@ -276,7 +276,7 @@ void LBM::IMPL::createInTexture()
 	desc.MipLevels = 1;
 	desc.SampleDesc.Count = 1;
 
-	if (FAILED(device->CreateTexture2D(&desc, 0, &tex_in)))
+	if (FAILED(device->CreateTexture2D(&desc, 0, tex_in.GetAddressOf())))
 	{
 		throw std::runtime_error("Failed to create in_texrue");
 	}
@@ -418,7 +418,6 @@ void LBM::IMPL::handleInput()
 
 void LBM::IMPL::update()
 {
-
 	fence();
 	context->CSSetShader(cs_lbm_streaming.Get(), 0, 0);
 	context->Dispatch(Setting::width / 32, Setting::height / 32, 1);

@@ -72,23 +72,23 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>$(SolutionDir)build\$(PlatformTarget)\$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)build\intermediate\$(PlatformTarget)\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)build\$(PlatformTarget)\$(Configuration)\$(ProjectName)\</OutDir>
+    <IntDir>$(SolutionDir)build\intermediate\$(PlatformTarget)\$(Configuration)\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)build\$(PlatformTarget)\$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)build\intermediate\$(PlatformTarget)\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)build\$(PlatformTarget)\$(Configuration)\$(ProjectName)\</OutDir>
+    <IntDir>$(SolutionDir)build\intermediate\$(PlatformTarget)\$(Configuration)\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>$(SolutionDir)build\$(PlatformTarget)\$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)build\intermediate\$(PlatformTarget)\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)build\$(PlatformTarget)\$(Configuration)\$(ProjectName)\</OutDir>
+    <IntDir>$(SolutionDir)build\intermediate\$(PlatformTarget)\$(Configuration)\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)build\$(PlatformTarget)\$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)build\intermediate\$(PlatformTarget)\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)build\$(PlatformTarget)\$(Configuration)\$(ProjectName)\</OutDir>
+    <IntDir>$(SolutionDir)build\intermediate\$(PlatformTarget)\$(Configuration)\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -103,7 +103,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>Xcopy $(SolutionDir)\DX11LBM\shaders $(TargetDir)shaders /s /e /y /I</Command>
+      <Command>Xcopy $(ProjectDir)shaders $(TargetDir)shaders /s /e /y /I</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -123,7 +123,7 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>Xcopy $(SolutionDir)\DX11LBM\shaders $(TargetDir)shaders /s /e /y /I</Command>
+      <Command>Xcopy $(ProjectDir)shaders $(TargetDir)shaders /s /e /y /I</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -139,7 +139,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>Xcopy $(SolutionDir)\DX11LBM\shaders $(TargetDir)shaders /s /e /y /I</Command>
+      <Command>Xcopy $(ProjectDir)shaders $(TargetDir)shaders /s /e /y /I</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -159,7 +159,7 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>Xcopy $(SolutionDir)\DX11LBM\shaders $(TargetDir)shaders /s /e /y /I</Command>
+      <Command>Xcopy $(ProjectDir)shaders $(TargetDir)shaders /s /e /y /I</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

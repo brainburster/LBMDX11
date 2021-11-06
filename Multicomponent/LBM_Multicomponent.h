@@ -34,20 +34,19 @@ private:
 	ComPtr<ID3D11ComputeShader> cs_draw;
 	//初始化
 	//ComPtr<ID3D11ComputeShader> cs_init;
-	//更新物理量
-	//ComPtr<ID3D11ComputeShader> cs_update_quantities;
 	//lbm-shan-chen模型
-	//collision
-	//ComPtr<ID3D11ComputeShader> cs_lbm_collision;
-	//streaming
-	//ComPtr<ID3D11ComputeShader> cs_lbm_streaming;
+	ComPtr<ID3D11ComputeShader> cs_lbm_moment_update;
+	ComPtr<ID3D11ComputeShader> cs_lbm_force_calculation;
+	ComPtr<ID3D11ComputeShader> cs_lbm_collision;
+	ComPtr<ID3D11ComputeShader> cs_lbm_streaming;
+	ComPtr<ID3D11ComputeShader> cs_lbm_visualization;
 	ComPtr<ID3D11ComputeShader> cs_lbm;
 	//储存2个组分的分布以及其他物理量如rho,u,psi(有效密度),F_k,
 	ComPtr<ID3D11Texture2D> tex_array_f_in[2];
 	ComPtr<ID3D11Texture2D> tex_array_f_out[2];
 	ComPtr<ID3D11UnorderedAccessView> uav_tex_array_f_in[2];
 	ComPtr<ID3D11UnorderedAccessView> uav_tex_array_f_out[2];
-	//4个通道分别表示不同组分的密度，第4个通道==0表示墙
+	//4个通道分别表示不同组分的密度，第4个通道<0表示墙
 	ComPtr<ID3D11Texture2D> tex_display;
 	ComPtr<ID3D11UnorderedAccessView> uav_tex_display;
 	ComPtr<ID3D11ShaderResourceView> srv_tex_display;
@@ -94,6 +93,19 @@ private:
 		set_input_callback();
 	}
 
+	void fence()
+	{
+		decltype(auto) device = dx11_wnd->GetDevice();
+		decltype(auto) ctx = dx11_wnd->GetImCtx();
+		ComPtr<ID3D11Query> event_query;
+		D3D11_QUERY_DESC queryDesc{};
+		queryDesc.Query = D3D11_QUERY_EVENT;
+		queryDesc.MiscFlags = 0;
+		device->CreateQuery(&queryDesc, event_query.GetAddressOf());
+		ctx->End(event_query.Get());
+		while (ctx->GetData(event_query.Get(), NULL, 0, 0) == S_FALSE) {}
+	}
+
 	void update_control_point_buffer()
 	{
 		decltype(auto) ctx = dx11_wnd->GetImCtx();
@@ -119,20 +131,39 @@ private:
 	{
 		decltype(auto) device = dx11_wnd->GetDevice();
 		decltype(auto) ctx = dx11_wnd->GetImCtx();
-		const int width = dx11_wnd->getWidth();
-		const int height = dx11_wnd->getHeight();
+		const int width = dx11_wnd->getWidth() / 4;
+		const int height = dx11_wnd->getHeight() / 4;
 
 		//应用控制点
 		if (control_points.size() > 0)
 		{
+			fence();
 			update_control_point_buffer();
 			control_points.clear();
 			ctx->CSSetShader(cs_draw.Get(), NULL, 0);
 			ctx->Dispatch((width - 1) / 32 + 1, (height - 1) / 32 + 1, 1);
+			fence();
 		}
 		////更新流体
-		ctx->CSSetShader(cs_lbm.Get(), NULL, 0);
+		////ctx->CSSetShader(cs_lbm.Get(), NULL, 0);
+		////ctx->Dispatch((width - 1) / 16 + 1, (height - 1) / 16 + 1, 1);
+		fence();
+		ctx->CSSetShader(cs_lbm_moment_update.Get(), NULL, 0);
 		ctx->Dispatch((width - 1) / 16 + 1, (height - 1) / 16 + 1, 1);
+		fence();
+		ctx->CSSetShader(cs_lbm_force_calculation.Get(), NULL, 0);
+		ctx->Dispatch((width - 1) / 16 + 1, (height - 1) / 16 + 1, 1);
+		fence();
+		ctx->CSSetShader(cs_lbm_collision.Get(), NULL, 0);
+		ctx->Dispatch((width - 1) / 16 + 1, (height - 1) / 16 + 1, 1);
+		fence();
+		ctx->CSSetShader(cs_lbm_streaming.Get(), NULL, 0);
+		ctx->Dispatch((width - 1) / 16 + 1, (height - 1) / 16 + 1, 1);
+		fence();
+		//显示
+		ctx->CSSetShader(cs_lbm_visualization.Get(), NULL, 0);
+		ctx->Dispatch((width - 1) / 32 + 1, (height - 1) / 32 + 1, 1);
+		fence();
 	}
 
 	void render()
@@ -154,162 +185,9 @@ private:
 		dx11_wnd->GetSwapChain()->Present(0, 0);
 	}
 	void handleInput() {}
-	void init_shaders()
-	{
-		ComPtr<ID3DBlob> blob;
-		decltype(auto) device = dx11_wnd->GetDevice();
-		HRESULT hr = NULL;
-		//创建VS shader
-		hr = D3DReadFileToBlob(L"shaders/vs.cso", blob.ReleaseAndGetAddressOf());
-		assert(SUCCEEDED(hr));
-		hr = device->CreateVertexShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, vs.GetAddressOf());
-		assert(SUCCEEDED(hr));
-		//创建 input_layout
-		hr = device->CreateInputLayout(VsIn::input_layout, VsIn::num_elements, blob->GetBufferPointer(), blob->GetBufferSize(), input_layout.GetAddressOf());
-		assert(SUCCEEDED(hr));
-		//创建PS shader
-		hr = D3DReadFileToBlob(L"shaders/ps.cso", blob.ReleaseAndGetAddressOf());
-		assert(SUCCEEDED(hr));
-		hr = device->CreatePixelShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, ps.GetAddressOf());
-		assert(SUCCEEDED(hr));
-
-		hr = D3DReadFileToBlob(L"shaders/cs_draw.cso", blob.ReleaseAndGetAddressOf());
-		assert(SUCCEEDED(hr));
-		hr = device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_draw.GetAddressOf());
-		assert(SUCCEEDED(hr));
-
-		hr = D3DReadFileToBlob(L"shaders/cs_lbm.cso", blob.ReleaseAndGetAddressOf());
-		assert(SUCCEEDED(hr));
-		hr = device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_lbm.GetAddressOf());
-		assert(SUCCEEDED(hr));
-	}
-	void init_resources()
-	{
-		decltype(auto) device = dx11_wnd->GetDevice();
-		HRESULT hr = NULL;
-		D3D11_TEXTURE2D_DESC tex_desc = {};
-		D3D11_BUFFER_DESC buf_desc = {};
-		D3D11_UNORDERED_ACCESS_VIEW_DESC uav_desc = {};
-		D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
-
-		tex_desc.Width = dx11_wnd->getWidth();
-		tex_desc.Height = dx11_wnd->getHeight();
-		tex_desc.ArraySize = 1;
-		tex_desc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-		tex_desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
-		tex_desc.CPUAccessFlags = 0;
-		tex_desc.MipLevels = 1;
-		tex_desc.SampleDesc.Count = 1;
-
-		uav_desc.Format = tex_desc.Format;
-		uav_desc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
-
-		srv_desc.Format = tex_desc.Format;
-		srv_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-		srv_desc.Texture2D.MipLevels = 1;
-
-		hr = device->CreateTexture2D(&tex_desc, 0, tex_display.GetAddressOf());
-		assert(SUCCEEDED(hr));
-		hr = device->CreateUnorderedAccessView(tex_display.Get(), &uav_desc, uav_tex_display.GetAddressOf());
-		assert(SUCCEEDED(hr));
-		hr = device->CreateShaderResourceView(tex_display.Get(), &srv_desc, srv_tex_display.GetAddressOf());
-		assert(SUCCEEDED(hr));
-
-		//分别创建3个组分个粒子分布以及宏观量的存储
-		tex_desc = {};
-		tex_desc.Width = dx11_wnd->getWidth();
-		tex_desc.Height = dx11_wnd->getHeight();
-		tex_desc.ArraySize = num_f_channels;
-		tex_desc.Format = DXGI_FORMAT_R32_FLOAT;
-		tex_desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS;
-		tex_desc.CPUAccessFlags = 0;
-		tex_desc.MipLevels = 1;
-		tex_desc.SampleDesc.Count = 1;
-		uav_desc = {};
-		uav_desc.Format = tex_desc.Format;
-		uav_desc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
-		uav_desc.Texture2DArray.ArraySize = num_f_channels;
-		hr = device->CreateTexture2D(&tex_desc, 0, tex_array_f_in[0].GetAddressOf());
-		hr = device->CreateTexture2D(&tex_desc, 0, tex_array_f_in[1].GetAddressOf());
-		hr = device->CreateTexture2D(&tex_desc, 0, tex_array_f_out[0].GetAddressOf());
-		hr = device->CreateTexture2D(&tex_desc, 0, tex_array_f_out[1].GetAddressOf());
-		assert(SUCCEEDED(hr));
-		hr = device->CreateUnorderedAccessView(tex_array_f_in[0].Get(), &uav_desc, uav_tex_array_f_in[0].GetAddressOf());
-		hr = device->CreateUnorderedAccessView(tex_array_f_in[1].Get(), &uav_desc, uav_tex_array_f_in[1].GetAddressOf());
-		hr = device->CreateUnorderedAccessView(tex_array_f_out[0].Get(), &uav_desc, uav_tex_array_f_out[0].GetAddressOf());
-		hr = device->CreateUnorderedAccessView(tex_array_f_out[1].Get(), &uav_desc, uav_tex_array_f_out[1].GetAddressOf());
-		assert(SUCCEEDED(hr));
-
-		//...
-
-		//创建控制点buffur
-		buf_desc = {};
-		buf_desc.ByteWidth = sizeof(ControlPoint) * max_num_control_points;
-		buf_desc.Usage = D3D11_USAGE_DYNAMIC;
-		buf_desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-		buf_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-		buf_desc.StructureByteStride = sizeof(ControlPoint);
-		buf_desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-		//
-		srv_desc = {};
-		srv_desc.Format = DXGI_FORMAT_UNKNOWN;
-		srv_desc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
-		srv_desc.Buffer.FirstElement = 0;
-		srv_desc.Buffer.NumElements = max_num_control_points;
-
-		hr = device->CreateBuffer(&buf_desc, 0, buf_control_points.GetAddressOf());
-		assert(SUCCEEDED(hr));
-		hr = device->CreateShaderResourceView(buf_control_points.Get(), &srv_desc, srv_control_points.GetAddressOf());
-		assert(SUCCEEDED(hr));
-
-		//创建cbuf_num_control_points
-		buf_desc = {};
-		buf_desc.Usage = D3D11_USAGE_DYNAMIC;
-		buf_desc.ByteWidth = 16;
-		buf_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-		buf_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-		hr = device->CreateBuffer(&buf_desc, nullptr, cbuf_num_control_points.GetAddressOf());
-		assert(SUCCEEDED(hr));
-	}
-
-	void bind_resources()
-	{
-		decltype(auto) device = dx11_wnd->GetDevice();
-		decltype(auto) ctx = dx11_wnd->GetImCtx();
-
-		//创建 vertices_buffer
-		HRESULT hr = NULL;
-		D3D11_BUFFER_DESC vbd{};
-		vbd.Usage = D3D11_USAGE_IMMUTABLE;
-		vbd.ByteWidth = sizeof(vertices);
-		vbd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-		vbd.CPUAccessFlags = 0;
-
-		D3D11_SUBRESOURCE_DATA sd{};
-		sd.pSysMem = vertices;
-
-		hr = device->CreateBuffer(&vbd, &sd, vertex_buffer.GetAddressOf());
-		assert(SUCCEEDED(hr));
-
-		//设置 input_layout
-		UINT stride = sizeof(VsIn);
-		UINT offset = 0;
-		ctx->IASetInputLayout(input_layout.Get());
-		ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-		ctx->IASetVertexBuffers(0, 1, vertex_buffer.GetAddressOf(), &stride, &offset);
-		ctx->VSSetShader(vs.Get(), 0, 0);
-		ctx->PSSetShader(ps.Get(), 0, 0);
-
-		ctx->CSSetUnorderedAccessViews(0, 1, uav_tex_array_f_in[0].GetAddressOf(), 0);
-		ctx->CSSetUnorderedAccessViews(1, 1, uav_tex_array_f_in[1].GetAddressOf(), 0);
-		ctx->CSSetUnorderedAccessViews(2, 1, uav_tex_array_f_out[0].GetAddressOf(), 0);
-		ctx->CSSetUnorderedAccessViews(3, 1, uav_tex_array_f_out[1].GetAddressOf(), 0);
-		ctx->CSSetUnorderedAccessViews(4, 1, uav_tex_display.GetAddressOf(), 0);
-		ctx->CSSetShaderResources(0, 1, srv_control_points.GetAddressOf());
-		ctx->CSSetConstantBuffers(0, 1, cbuf_num_control_points.GetAddressOf());
-		//ctx->PSSetShaderResources(0, 1, srv_tex_display.GetAddressOf());
-	}
-
+	void init_shaders();
+	void init_resources();
+	void bind_resources();
 	void add_control_point(XMFLOAT2 pos, XMFLOAT2 data);
 	void set_input_callback();
 };
