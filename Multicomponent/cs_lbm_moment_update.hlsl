@@ -1,13 +1,12 @@
 #include "cs_header.hlsli"
 #include "cs_lbm_header.hlsli"
 
-[numthreads(16, 16, 1)]
+[numthreads(32, 32, 1)]
 void main( uint3 DTid : SV_DispatchThreadID )
 {
     const uint2 pos = DTid.xy;
     float f0[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     uint i = 0;
-    
     [unroll]
     for (i = 0; i < 9; i++)
     {
@@ -24,10 +23,10 @@ void main( uint3 DTid : SV_DispatchThreadID )
     }
     u0 /= rho0;
      //计算有效密度
-    float psi0 = 1.f-exp( -rho0/1.f);
+    float psi0 = 1.f - exp(-rho0 / 1.f);
     
+    f_out[0][uint3(pos, 9)] = psi0;
     f_in[0][uint3(pos, 9)] = rho0;
     f_in[0][uint3(pos, 10)] = u0.x;
     f_in[0][uint3(pos, 11)] = u0.y;
-    f_out[0][uint3(pos, 9)] = psi0;
 }

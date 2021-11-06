@@ -64,8 +64,8 @@ void LBM_Multicomponent::init_resources()
 	D3D11_UNORDERED_ACCESS_VIEW_DESC uav_desc = {};
 	D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
 
-	tex_desc.Width = dx11_wnd->getWidth() / 4;
-	tex_desc.Height = dx11_wnd->getHeight() / 4;
+	tex_desc.Width = dx11_wnd->getWidth() / 8;
+	tex_desc.Height = dx11_wnd->getHeight() / 8;
 	tex_desc.ArraySize = 1;
 	tex_desc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 	tex_desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
@@ -89,8 +89,8 @@ void LBM_Multicomponent::init_resources()
 
 	//分别创建3个组分个粒子分布以及宏观量的存储
 	tex_desc = {};
-	tex_desc.Width = dx11_wnd->getWidth() / 4;
-	tex_desc.Height = dx11_wnd->getHeight() / 4;
+	tex_desc.Width = dx11_wnd->getWidth() / 8;
+	tex_desc.Height = dx11_wnd->getHeight() / 8;
 	tex_desc.ArraySize = num_f_channels;
 	tex_desc.Format = DXGI_FORMAT_R32_FLOAT;
 	tex_desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS;
@@ -210,20 +210,18 @@ void LBM_Multicomponent::set_input_callback()
 {
 	const auto onmousemove = [&](WPARAM wparam, LPARAM lparam) {
 		const POINTS p = MAKEPOINTS(lparam);
-		const XMFLOAT2 pos = { (float)p.x / 4,(float)p.y / 4 };
-		if (wparam & MK_LBUTTON) {
-			if (wparam & MK_SHIFT) {
-				add_control_point(pos, { 5.f, 0.f });
-			}
-			else {
-				add_control_point(pos, { 10.f,1.f });
-			}
+		const XMFLOAT2 pos = { (float)p.x / 8,(float)p.y / 8 };
+		if (wparam & MK_SHIFT) {
+			add_control_point(pos, { 2.f, 0.f });
+		}
+		else if (wparam & MK_LBUTTON) {
+			add_control_point(pos, { 5.f,1.f });
 		}
 		else if (wparam & MK_RBUTTON) {
-			add_control_point(pos, { 10.f,2.f });
+			add_control_point(pos, { 5.f,2.f });
 		}
 		else if (wparam & MK_MBUTTON) {
-			add_control_point(pos, { 1.f,3.f });
+			add_control_point(pos, { 1.2f,3.f });
 		}
 
 		TRACKMOUSEEVENT track_mouse_event{};

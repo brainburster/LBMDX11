@@ -131,9 +131,10 @@ private:
 	{
 		decltype(auto) device = dx11_wnd->GetDevice();
 		decltype(auto) ctx = dx11_wnd->GetImCtx();
-		const int width = dx11_wnd->getWidth() / 4;
-		const int height = dx11_wnd->getHeight() / 4;
-
+		const int width = dx11_wnd->getWidth() / 8;
+		const int height = dx11_wnd->getHeight() / 8;
+		const UINT ThreadGroupCountX = (width - 1) / 32 + 1;
+		const UINT ThreadGroupCountY = (height - 1) / 32 + 1;
 		//应用控制点
 		if (control_points.size() > 0)
 		{
@@ -141,28 +142,26 @@ private:
 			update_control_point_buffer();
 			control_points.clear();
 			ctx->CSSetShader(cs_draw.Get(), NULL, 0);
-			ctx->Dispatch((width - 1) / 32 + 1, (height - 1) / 32 + 1, 1);
+			ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
 			fence();
 		}
-		////更新流体
-		////ctx->CSSetShader(cs_lbm.Get(), NULL, 0);
-		////ctx->Dispatch((width - 1) / 16 + 1, (height - 1) / 16 + 1, 1);
+
 		fence();
 		ctx->CSSetShader(cs_lbm_moment_update.Get(), NULL, 0);
-		ctx->Dispatch((width - 1) / 16 + 1, (height - 1) / 16 + 1, 1);
+		ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
 		fence();
 		ctx->CSSetShader(cs_lbm_force_calculation.Get(), NULL, 0);
-		ctx->Dispatch((width - 1) / 16 + 1, (height - 1) / 16 + 1, 1);
+		ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
 		fence();
 		ctx->CSSetShader(cs_lbm_collision.Get(), NULL, 0);
-		ctx->Dispatch((width - 1) / 16 + 1, (height - 1) / 16 + 1, 1);
+		ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
 		fence();
 		ctx->CSSetShader(cs_lbm_streaming.Get(), NULL, 0);
-		ctx->Dispatch((width - 1) / 16 + 1, (height - 1) / 16 + 1, 1);
+		ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
 		fence();
 		//显示
 		ctx->CSSetShader(cs_lbm_visualization.Get(), NULL, 0);
-		ctx->Dispatch((width - 1) / 32 + 1, (height - 1) / 32 + 1, 1);
+		ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
 		fence();
 	}
 
