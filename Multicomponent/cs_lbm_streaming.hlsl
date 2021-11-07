@@ -15,32 +15,49 @@ void main( uint3 DTid : SV_DispatchThreadID )
 {
     const uint2 pos = DTid.xy;
     
-    float f0[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    float f[2][9] =
+    {
+        { 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+        { 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+    };
     uint i = 0;
+    uint j = 0;
+
     bool flag1 = is_wall(pos);
-    f0[0] = f_out[0][uint3(pos, 0)];
+    
+    [unroll]
     for (i = 1; i < 9; i++)
     {
         uint2 pos_2 = pos + c[oppo[i]];
         bool flag2 = is_wall(pos_2);
-        if (flag1)
+            
+        [unroll]
+        for (j = 0; j < 2; j++)
         {
-            f0[i] = 0.0f;
-        }
-        else if (flag2)
-        {
-            //半时间步长反弹
-            f0[i] = f_out[0][uint3(pos, oppo[i])];
-        }
-        else
-        {
-            f0[i] = f_out[0][uint3(pos_2, i)];
+            if (flag1)
+            {
+                f[j][i] = 0.0f;
+            }
+            else if (flag2)
+            {
+                f[j][i] = f_out[j][uint3(pos, oppo[i])];
+            }
+            else
+            {
+                f[j][i] = f_out[j][uint3(pos_2, i)];
+            }
         }
     }
     
     [unroll]
-    for (i = 0; i < 9; i++)
+    for (j = 0; j < 2; j++)
     {
-        f_in[0][uint3(pos,i)] = f0[i];
+        f[j][0] = f_out[j][uint3(pos, 0)];
+        
+        [unroll]
+        for (i = 0; i < 9; i++)
+        {
+            f_in[j][uint3(pos, i)] = f[j][i];
+        }
     }
 }

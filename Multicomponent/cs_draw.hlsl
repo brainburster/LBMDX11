@@ -19,7 +19,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
             }
             else if (cp.data == 2.0)
             {
-                f_in[1][uint3(index.xy, 0)] = 1.0;
+                f_in[1][uint3(index.xy, 0)] = 0.1;
             }
             else if (cp.data == 1.0)
             {

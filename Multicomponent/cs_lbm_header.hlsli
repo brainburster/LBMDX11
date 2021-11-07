@@ -17,5 +17,3 @@ static const uint oppo[9] =
 {
     0, 3, 4, 1, 2, 7, 8, 5, 6
 };
-
-static const float k = 1.01f;

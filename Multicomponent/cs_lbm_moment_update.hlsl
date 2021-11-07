@@ -5,28 +5,40 @@
 void main( uint3 DTid : SV_DispatchThreadID )
 {
     const uint2 pos = DTid.xy;
-    float f0[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    float f[2][9] = {
+        { 0, 0, 0, 0, 0, 0, 0, 0, 0 } ,
+        { 0, 0, 0, 0, 0, 0, 0, 0, 0 } 
+    };
+    float rho[2] = { 0.f, 0.f };
+    float2 u[2] = { { 0.f, 0.f }, { 0.f, 0.f } };
+    float psi[2] = { 0.f, 0.f };
     uint i = 0;
-    [unroll]
-    for (i = 0; i < 9; i++)
-    {
-        f0[i] = f_in[0][uint3(pos, i)];
-    }
+    uint j = 0;
+    const float rho0[2] = { 1.f, 0.1f };
     
-    //更新物理量
-    float rho0 = f0[0] + f0[1] + f0[2] + f0[3] + f0[4] + f0[5] + f0[6] + f0[7] + f0[8];
-    float2 u0 = { 0.f, 0.f };
     [unroll]
-    for (i = 1; i < 9; i++)
+    for (j = 0; j < 2; j++)
     {
-        u0 += f0[0] * c[0];
-    }
-    u0 /= rho0;
-     //计算有效密度
-    float psi0 = 1.f - exp(-rho0 / 1.f);
+        [unroll]
+        for (i = 0; i < 9; i++)
+        {
+            f[j][i] = f_in[j][uint3(pos, i)];
+        }
+
+        [unroll]
+        for (i = 1; i < 9; i++)
+        {
+            u[j] += f[j][0] * c[0];
+        }
+        
+        rho[j] = f[j][0] + f[j][1] + f[j][2] + f[j][3] + f[j][4] + f[j][5] + f[j][6] + f[j][7] + f[j][8];
     
-    f_out[0][uint3(pos, 9)] = psi0;
-    f_in[0][uint3(pos, 9)] = rho0;
-    f_in[0][uint3(pos, 10)] = u0.x;
-    f_in[0][uint3(pos, 11)] = u0.y;
+        u[j] /= rho[j];   
+
+        psi[j] = 1.f - exp(-rho[j] / rho0[j]);
+        f_out[j][uint3(pos, 9)] = psi[j];
+        f_in[j][uint3(pos, 9)] = rho[j];
+        f_in[j][uint3(pos, 10)] = u[j].x;
+        f_in[j][uint3(pos, 11)] = u[j].y;
+    }
 }
