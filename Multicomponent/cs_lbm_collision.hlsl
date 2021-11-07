@@ -52,8 +52,6 @@ void main( uint3 DTid : SV_DispatchThreadID )
         {
             u[j] += 0.5f * F[j] / rho[j];
         }
-        
-        const float len = length(u[j]);
     
         float u_sqr = 1.5f * dot(u[j], u[j]);
         
