@@ -9,14 +9,10 @@ void main( uint3 DTid : SV_DispatchThreadID )
     const uint2 pos = DTid.xy;
     uint i = 0;
     uint j = 0;
-    float f[2][9] =
-    {
-        { 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-        { 0, 0, 0, 0, 0, 0, 0, 0, 0 }
-    };
+    float f[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     float rho[2] = { 0.f, 0.f };
-    float2 F[2] = { { 0.f, 0.f }, { 0.f, 0.f } };
-    float2 u[2] = { { 0.f, 0.f }, { 0.f, 0.f } };
+    float2 F = { 0.f, 0.f };
+    float2 u = { 0.f, 0.f };
     
     rho[0] = f_in[0][uint3(pos, 9)];
     rho[1] = f_in[1][uint3(pos, 9)];
@@ -33,11 +29,11 @@ void main( uint3 DTid : SV_DispatchThreadID )
     [unroll]
     for (j = 0; j < 2; j++)
     {
-        u[j] = float2(
+        u = float2(
             f_in[j][uint3(pos, 10)],
             f_in[j][uint3(pos, 11)]
         );
-        F[j] = float2(
+        F = float2(
             f_out[j][uint3(pos, 10)],
             f_out[j][uint3(pos, 11)]
         );
@@ -45,33 +41,33 @@ void main( uint3 DTid : SV_DispatchThreadID )
         [unroll]
         for (i = 0; i < 9; i++)
         {
-            f[j][i] = f_in[j][uint3(pos, i)];
+            f[i] = f_in[j][uint3(pos, i)];
         }
 
-        if (rho[j] > 0.0f)
+        if (rho[j] != 0.0f)
         {
-            u[j] += 0.5f * F[j] / rho[j];
+            u += 0.5f * F / rho[j];
         }
     
-        float u_sqr = 1.5f * dot(u[j], u[j]);
+        float u_sqr = 1.5f * dot(u, u);
         
         [unroll]
         for (i = 0; i < 9; i++)
         {
-            float cu = 3.0 * dot(c[i], u[j]);
+            float cu = 3.0 * dot(c[i], u);
             float f_eq = rho[j] * w[i] * (1.0f + cu - u_sqr + 0.5f * cu * cu);
-            f[j][i] = (1.0f - k[j]) * f[j][i] + k[j] * f_eq;
-            if (rho[j] > 0.0f)
+            f[i] = (1.0f - k[j]) * f[i] + k[j] * f_eq;
+            if (rho[j] != 0.0f)
             {
-                float Si = (1.0f - 0.5f * k[j]) * f_eq / rho[j] * (dot((c[i] - u[j]) * 3.f, F[j]));
-                f[j][i] += Si;
+                float Si = (1.0f - 0.5f * k[j]) * f_eq / rho[j] * (dot((c[i] - u) * 3.f, F));
+                f[i] += Si;
             }
         }
         
         [unroll]
         for (i = 0; i < 9; i++)
         {
-            f_out[j][uint3(pos, i)] = f[j][i];
+            f_out[j][uint3(pos, i)] = f[i];
         }
     }
 }

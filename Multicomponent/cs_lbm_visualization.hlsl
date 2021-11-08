@@ -13,5 +13,5 @@ void main( uint3 DTid : SV_DispatchThreadID )
         f_out[0][uint3(pos, 11)] + f_out[1][uint3(pos, 11)] * 5.f
     };
     
-    uav_display[pos] = float4(rho0, length(F) * 0.5f, rho1*10.f, uav_display[pos].w);
+    uav_display[pos] = float4(rho0*rho0, length(F) * 0.5f, rho1*rho1*100.f, uav_display[pos].w);
 }
