@@ -8,7 +8,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPreInstance, _I
 	auto wnd = std::make_shared<DX11_Wnd>(hInstance);
 	wnd->Size(800, 600)
 		.WndClassName(L"Cls_LBM_Multicomponent")
-		.WndName(L"LBM")
+		.WndName(L"×ó¼üË®£¬ÓÒ¼üÓÍ£¬ÖÐ¼üÇ½£¬shift¼üÏðÆ¤")
 		.RemoveWndStyle(WS_MAXIMIZEBOX)
 		.Init()
 		.AddWndProc(WM_CLOSE, [&wnd](auto, auto) {

@@ -29,7 +29,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
                 F += (g[j][0] * _psi0 + g[j][1] * _psi1) * c[i] / pow(length(c[i]), 2.f) * 0.08f;
             }
             F *= -psi;
-            F += float2(0.f, 0.01f) * rho;
+            F += float2(0.f, 0.014f) * rho;
         }
         f_out[j][uint3(pos, 10)] = F.x;
         f_out[j][uint3(pos, 11)] = F.y;

@@ -50,9 +50,8 @@ private:
 	ComPtr<ID3D11Texture2D> tex_display;
 	ComPtr<ID3D11UnorderedAccessView> uav_tex_display;
 	ComPtr<ID3D11ShaderResourceView> srv_tex_display;
-	//
-	//控制点
-	//用于生成流体以及墙
+
+	//控制点 用于生成流体以及墙
 	struct ControlPoint
 	{
 		XMFLOAT2 pos;
@@ -71,118 +70,13 @@ private:
 	};
 public:
 	LBM_Multicomponent(decltype(dx11_wnd) wnd) : dx11_wnd{ wnd }, last_control_point{ {-1.f,-1.f},{-1.f,-1.f} }{}
-	//
-	void run()
-	{
-		init();
-		while (!dx11_wnd->app_should_close())
-		{
-			dx11_wnd->PeekMsg();
-			handleInput();
-			update();
-			render();
-		}
-	}
-
+	void run();
 private:
-	void init()
-	{
-		init_shaders();
-		init_resources();
-		bind_resources();
-		set_input_callback();
-	}
-
-	void fence()
-	{
-		decltype(auto) device = dx11_wnd->GetDevice();
-		decltype(auto) ctx = dx11_wnd->GetImCtx();
-		ComPtr<ID3D11Query> event_query;
-		D3D11_QUERY_DESC queryDesc{};
-		queryDesc.Query = D3D11_QUERY_EVENT;
-		queryDesc.MiscFlags = 0;
-		device->CreateQuery(&queryDesc, event_query.GetAddressOf());
-		ctx->End(event_query.Get());
-		while (ctx->GetData(event_query.Get(), NULL, 0, 0) == S_FALSE) {}
-	}
-
-	void update_control_point_buffer()
-	{
-		decltype(auto) ctx = dx11_wnd->GetImCtx();
-		HRESULT hr = NULL;
-		D3D11_MAPPED_SUBRESOURCE mapped_subresource = {};
-		hr = ctx->Map(buf_control_points.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_subresource);
-		assert(SUCCEEDED(hr));
-		ControlPoint* p_data = (ControlPoint*)mapped_subresource.pData;
-		const size_t n_data = control_points.size();
-		memcpy_s(p_data, max_num_control_points * sizeof ControlPoint,
-			&control_points[0], n_data * sizeof ControlPoint);
-		ctx->Unmap(buf_control_points.Get(), 0);
-		//
-		mapped_subresource = {};
-		hr = ctx->Map(cbuf_num_control_points.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_subresource);
-		assert(SUCCEEDED(hr));
-		int* p_num_control_points = (int*)mapped_subresource.pData;
-		*p_num_control_points = (int)control_points.size();
-		ctx->Unmap(cbuf_num_control_points.Get(), 0);
-	}
-
-	void update()
-	{
-		decltype(auto) device = dx11_wnd->GetDevice();
-		decltype(auto) ctx = dx11_wnd->GetImCtx();
-		const int width = dx11_wnd->getWidth() / 8;
-		const int height = dx11_wnd->getHeight() / 8;
-		const UINT ThreadGroupCountX = (width - 1) / 32 + 1;
-		const UINT ThreadGroupCountY = (height - 1) / 32 + 1;
-		//应用控制点
-		if (control_points.size() > 0)
-		{
-			fence();
-			update_control_point_buffer();
-			control_points.clear();
-			ctx->CSSetShader(cs_draw.Get(), NULL, 0);
-			ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
-			fence();
-		}
-
-		fence();
-		ctx->CSSetShader(cs_lbm_moment_update.Get(), NULL, 0);
-		ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
-		fence();
-		ctx->CSSetShader(cs_lbm_force_calculation.Get(), NULL, 0);
-		ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
-		fence();
-		ctx->CSSetShader(cs_lbm_collision.Get(), NULL, 0);
-		ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
-		fence();
-		ctx->CSSetShader(cs_lbm_streaming.Get(), NULL, 0);
-		ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
-		fence();
-		//显示
-		ctx->CSSetShader(cs_lbm_visualization.Get(), NULL, 0);
-		ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
-		fence();
-	}
-
-	void render()
-	{
-		decltype(auto) ctx = dx11_wnd->GetImCtx();
-		constexpr float back_color[4] = { 0.f,0.f,0.f,1.f };
-		ctx->ClearRenderTargetView(dx11_wnd->GetRTV(), back_color);
-		ctx->ClearDepthStencilView(dx11_wnd->GetDsv(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.f, 0);
-
-		//解决同一个资源同时绑定srv和uav的冲突
-		ID3D11ShaderResourceView* null_srv = nullptr;
-		ID3D11UnorderedAccessView* null_uav = nullptr;
-		ctx->CSSetUnorderedAccessViews(4, 1, &null_uav, 0);
-		ctx->PSSetShaderResources(0, 1, srv_tex_display.GetAddressOf());
-		//绘制
-		ctx->Draw(4, 0);
-		ctx->CSSetUnorderedAccessViews(4, 1, uav_tex_display.GetAddressOf(), 0);
-		ctx->PSSetShaderResources(0, 1, &null_srv);
-		dx11_wnd->GetSwapChain()->Present(0, 0);
-	}
+	void init();
+	void fence();
+	void update_control_point_buffer();
+	void update();
+	void render();
 	void handleInput() {}
 	void init_shaders();
 	void init_resources();

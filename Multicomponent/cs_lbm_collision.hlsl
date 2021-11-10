@@ -44,25 +44,25 @@ void main( uint3 DTid : SV_DispatchThreadID )
             f[i] = f_in[j][uint3(pos, i)];
         }
 
-        if (rho[j] != 0.0f)
+        if (rho[j] > 0.0f)
         {
             u += 0.5f * F / rho[j];
         }
     
         float u_sqr = 1.5f * dot(u, u);
-        
         [unroll]
-        for (i = 0; i < 9; i++)
-        {
-            float cu = 3.0 * dot(c[i], u);
-            float f_eq = rho[j] * w[i] * (1.0f + cu - u_sqr + 0.5f * cu * cu);
-            f[i] = (1.0f - k[j]) * f[i] + k[j] * f_eq;
-            if (rho[j] != 0.0f)
+            for (i = 0; i < 9; i++)
             {
-                float Si = (1.0f - 0.5f * k[j]) * f_eq / rho[j] * (dot((c[i] - u) * 3.f, F));
-                f[i] += Si;
+                float cu = 3.0 * dot(c[i], u);
+                float f_eq = rho[j] * w[i] * (1.0f + cu - u_sqr + 0.5f * cu * cu);
+                f[i] = (1.0f - k[j]) * f[i] + k[j] * f_eq;
+                if (rho[j] > 0.0f)
+                {
+                    float Si = (1.0f - 0.5f * k[j]) * f_eq / rho[j] * (dot((c[i] - u) * 3.f, F));
+                    //float Si = (1.0f - 0.5f * k[j]) * w[i] * dot((c[i] - u) * 3 + (dot(c[i], u) * c[i] * 9), F);
+                    f[i] += Si;
+                }
             }
-        }
         
         [unroll]
         for (i = 0; i < 9; i++)
