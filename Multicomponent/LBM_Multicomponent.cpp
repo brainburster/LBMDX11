@@ -1,4 +1,5 @@
 #include "LBM_Multicomponent.h"
+#include <d3dcompiler.h>
 
 void LBM_Multicomponent::init_shaders()
 {
@@ -22,11 +23,6 @@ void LBM_Multicomponent::init_shaders()
 	hr = D3DReadFileToBlob(L"shaders/cs_draw.cso", blob.ReleaseAndGetAddressOf());
 	assert(SUCCEEDED(hr));
 	hr = device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_draw.GetAddressOf());
-	assert(SUCCEEDED(hr));
-
-	hr = D3DReadFileToBlob(L"shaders/cs_lbm.cso", blob.ReleaseAndGetAddressOf());
-	assert(SUCCEEDED(hr));
-	hr = device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_lbm.GetAddressOf());
 	assert(SUCCEEDED(hr));
 
 	hr = D3DReadFileToBlob(L"shaders/cs_lbm_collision.cso", blob.ReleaseAndGetAddressOf());

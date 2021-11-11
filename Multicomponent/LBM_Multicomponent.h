@@ -3,7 +3,6 @@
 #include "dx11_wnd.hpp"
 #include <memory>
 #include <vector>
-#include <d3dcompiler.h>
 
 class LBM_Multicomponent final
 {
@@ -40,7 +39,6 @@ private:
 	ComPtr<ID3D11ComputeShader> cs_lbm_collision;
 	ComPtr<ID3D11ComputeShader> cs_lbm_streaming;
 	ComPtr<ID3D11ComputeShader> cs_lbm_visualization;
-	ComPtr<ID3D11ComputeShader> cs_lbm;
 	//储存2个组分的分布以及其他物理量如rho,u,psi(有效密度),F_k,
 	ComPtr<ID3D11Texture2D> tex_array_f_in[2];
 	ComPtr<ID3D11Texture2D> tex_array_f_out[2];
