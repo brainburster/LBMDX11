@@ -15,14 +15,14 @@ void streaming(uint2 pos,inout float f[9])
 	[unroll(9)]
     for (uint i = 0; i < 9; i++)
     {
-        uint2 id = cycle(pos, v[8 - i], int2(640, 320));
-        if (inTex[id].w > 0.1f||id.y==0)
+        uint2 pos2 = cycle(pos, v[8 - i], int2(640, 320));
+        if (inTex[pos2].w > 0.1f || pos2.y == 0)
         {
             f[i] = f_in[uint3(pos, 8 - i)];
         }
         else
         {
-            f[i] = f_in[uint3(id, i)];
+            f[i] = f_in[uint3(pos2, i)];
         }
     }
 }
@@ -41,7 +41,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
         //f[2] = f_in[uint3(pos + int2(-1, 0), 2)];
         f[0] = 0.5 * (f_in[uint3(pos + int2(-1, 0), 0)] + f_in[uint3(pos + int2(-2, 0), 0)]);
         f[1] = 0.5 * (f_in[uint3(pos + int2(-1, 0), 1)] + f_in[uint3(pos + int2(-2, 0), 1)]);
-        f[2] = 0.5 * (f_in[uint3(pos + int2(-1, 0), 2)] + f_in[uint3(pos + int2(-2, 0), 2)]);;
+        f[2] = 0.5 * (f_in[uint3(pos + int2(-1, 0), 2)] + f_in[uint3(pos + int2(-2, 0), 2)]);
     }
     
   	[unroll(9)]

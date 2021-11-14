@@ -11,13 +11,8 @@ SamplerState srv_display_sampler
 float4 main(VsOut vs_out) : SV_TARGET
 {
     float4 data = srv_display.Sample(srv_display_sampler, vs_out.uv);
-    const float4 back_color = float4(vs_out.uv, 0.f, 1.0f);
-    const float4 wall_color = float4(0.25f, 0.25f, 0.25f, 1.0f);
+    const float4 wall_color = float4(0.3f, 0.4f, 0.4f, 1.f) * (1.5f+data.w);
     const float4 color = float4(float3(.8f,.8f,.8f)-data.xyz, 1.0f);
-    
-    if (data.w < 0.0f)
-    {
-        return wall_color * abs(data.w);
-    }
-    return color;
+
+    return lerp(wall_color, color, step(-.1f, data.w));
 }

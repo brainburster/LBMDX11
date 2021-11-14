@@ -3,7 +3,7 @@
 
 bool is_wall(uint2 pos)
 {
-    if (pos.x < 0 || pos.y > (600 / 8 - 1) || pos.y < 0 || pos.x > (800 / 8 - 1))
+    if ( pos.y > (600 / 8 - 1) || pos.x > (800 / 8 - 1))
     {
         return true;
     }
@@ -15,8 +15,9 @@ void main( uint3 DTid : SV_DispatchThreadID )
 {
     const uint2 pos = DTid.xy;
     
-    float f[2][9] =
+    float f[3][9] =
     {
+        { 0, 0, 0, 0, 0, 0, 0, 0, 0 },
         { 0, 0, 0, 0, 0, 0, 0, 0, 0 },
         { 0, 0, 0, 0, 0, 0, 0, 0, 0 }
     };
@@ -32,7 +33,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
         bool flag2 = is_wall(pos_2);
             
         [unroll]
-        for (j = 0; j < 2; j++)
+        for (j = 0; j < 3; j++)
         {
             if (flag1)
             {
@@ -47,10 +48,11 @@ void main( uint3 DTid : SV_DispatchThreadID )
                 f[j][i] = f_out[j][uint3(pos_2, i)];
             }
         }
+
     }
     
     [unroll]
-    for (j = 0; j < 2; j++)
+    for (j = 0; j < 3; j++)
     {
         f[j][0] = f_out[j][uint3(pos, 0)];
         

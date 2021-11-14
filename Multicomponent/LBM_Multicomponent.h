@@ -31,19 +31,18 @@ private:
 	ComPtr<ID3D11PixelShader> ps;
 	//根据控制点生成流体与墙
 	ComPtr<ID3D11ComputeShader> cs_draw;
-	//初始化
-	//ComPtr<ID3D11ComputeShader> cs_init;
-	//lbm-shan-chen模型
+	//shan-chen模型
+	ComPtr<ID3D11ComputeShader> cs_lbm_init;
 	ComPtr<ID3D11ComputeShader> cs_lbm_moment_update;
 	ComPtr<ID3D11ComputeShader> cs_lbm_force_calculation;
 	ComPtr<ID3D11ComputeShader> cs_lbm_collision;
 	ComPtr<ID3D11ComputeShader> cs_lbm_streaming;
 	ComPtr<ID3D11ComputeShader> cs_lbm_visualization;
 	//储存2个组分的分布以及其他物理量如rho,u,psi(有效密度),F_k,
-	ComPtr<ID3D11Texture2D> tex_array_f_in[2];
-	ComPtr<ID3D11Texture2D> tex_array_f_out[2];
-	ComPtr<ID3D11UnorderedAccessView> uav_tex_array_f_in[2];
-	ComPtr<ID3D11UnorderedAccessView> uav_tex_array_f_out[2];
+	ComPtr<ID3D11Texture2D> tex_array_f_in[3];
+	ComPtr<ID3D11Texture2D> tex_array_f_out[3];
+	ComPtr<ID3D11UnorderedAccessView> uav_tex_array_f_in[3];
+	ComPtr<ID3D11UnorderedAccessView> uav_tex_array_f_out[3];
 	//4个通道分别表示不同组分的密度，第4个通道<0表示墙
 	ComPtr<ID3D11Texture2D> tex_display;
 	ComPtr<ID3D11UnorderedAccessView> uav_tex_display;

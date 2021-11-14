@@ -1,6 +1,6 @@
-RWTexture2DArray<float> f_in[2] : register(u0);
-RWTexture2DArray<float> f_out[2] : register(u2);
-RWTexture2D<float4> uav_display : register(u4);
+RWTexture2DArray<float> f_in[3] : register(u0);
+RWTexture2DArray<float> f_out[3] : register(u3);
+RWTexture2D<float4> uav_display : register(u6);
 
 cbuffer PerFrame : register(b0)
 {

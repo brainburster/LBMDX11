@@ -57,9 +57,6 @@
     <FxCompile Include="cs_draw.hlsl">
       <Filter>shaders</Filter>
     </FxCompile>
-    <FxCompile Include="cs_lbm.hlsl">
-      <Filter>shaders</Filter>
-    </FxCompile>
     <FxCompile Include="cs_lbm_collision.hlsl">
       <Filter>shaders</Filter>
     </FxCompile>
@@ -73,6 +70,9 @@
       <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="cs_lbm_moment_update.hlsl">
+      <Filter>shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="cs_lbm_init.hlsl">
       <Filter>shaders</Filter>
     </FxCompile>
   </ItemGroup>

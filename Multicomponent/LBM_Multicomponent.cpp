@@ -25,6 +25,11 @@ void LBM_Multicomponent::init_shaders()
 	hr = device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_draw.GetAddressOf());
 	assert(SUCCEEDED(hr));
 
+	hr = D3DReadFileToBlob(L"shaders/cs_lbm_init.cso", blob.ReleaseAndGetAddressOf());
+	assert(SUCCEEDED(hr));
+	hr = device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_lbm_init.GetAddressOf());
+	assert(SUCCEEDED(hr));
+
 	hr = D3DReadFileToBlob(L"shaders/cs_lbm_collision.cso", blob.ReleaseAndGetAddressOf());
 	assert(SUCCEEDED(hr));
 	hr = device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_lbm_collision.GetAddressOf());
@@ -91,6 +96,11 @@ void LBM_Multicomponent::init()
 	init_resources();
 	bind_resources();
 	set_input_callback();
+	decltype(auto) ctx = dx11_wnd->GetImCtx();
+	fence();
+	ctx->CSSetShader(cs_lbm_init.Get(), 0, 0);
+	ctx->Dispatch((dx11_wnd->getWidth() - 1) / 32 + 1, (dx11_wnd->getHeight() - 1) / 32 + 1, 1);
+	fence();
 }
 
 //
@@ -155,13 +165,18 @@ void LBM_Multicomponent::init_resources()
 	uav_desc.Texture2DArray.ArraySize = num_f_channels;
 	hr = device->CreateTexture2D(&tex_desc, 0, tex_array_f_in[0].GetAddressOf());
 	hr = device->CreateTexture2D(&tex_desc, 0, tex_array_f_in[1].GetAddressOf());
+	hr = device->CreateTexture2D(&tex_desc, 0, tex_array_f_in[2].GetAddressOf());
 	hr = device->CreateTexture2D(&tex_desc, 0, tex_array_f_out[0].GetAddressOf());
 	hr = device->CreateTexture2D(&tex_desc, 0, tex_array_f_out[1].GetAddressOf());
+	hr = device->CreateTexture2D(&tex_desc, 0, tex_array_f_out[2].GetAddressOf());
+
 	assert(SUCCEEDED(hr));
 	hr = device->CreateUnorderedAccessView(tex_array_f_in[0].Get(), &uav_desc, uav_tex_array_f_in[0].GetAddressOf());
 	hr = device->CreateUnorderedAccessView(tex_array_f_in[1].Get(), &uav_desc, uav_tex_array_f_in[1].GetAddressOf());
+	hr = device->CreateUnorderedAccessView(tex_array_f_in[2].Get(), &uav_desc, uav_tex_array_f_in[2].GetAddressOf());
 	hr = device->CreateUnorderedAccessView(tex_array_f_out[0].Get(), &uav_desc, uav_tex_array_f_out[0].GetAddressOf());
 	hr = device->CreateUnorderedAccessView(tex_array_f_out[1].Get(), &uav_desc, uav_tex_array_f_out[1].GetAddressOf());
+	hr = device->CreateUnorderedAccessView(tex_array_f_out[2].Get(), &uav_desc, uav_tex_array_f_out[2].GetAddressOf());
 	assert(SUCCEEDED(hr));
 
 	//...
@@ -226,9 +241,11 @@ void LBM_Multicomponent::bind_resources()
 
 	ctx->CSSetUnorderedAccessViews(0, 1, uav_tex_array_f_in[0].GetAddressOf(), 0);
 	ctx->CSSetUnorderedAccessViews(1, 1, uav_tex_array_f_in[1].GetAddressOf(), 0);
-	ctx->CSSetUnorderedAccessViews(2, 1, uav_tex_array_f_out[0].GetAddressOf(), 0);
-	ctx->CSSetUnorderedAccessViews(3, 1, uav_tex_array_f_out[1].GetAddressOf(), 0);
-	ctx->CSSetUnorderedAccessViews(4, 1, uav_tex_display.GetAddressOf(), 0);
+	ctx->CSSetUnorderedAccessViews(2, 1, uav_tex_array_f_in[2].GetAddressOf(), 0);
+	ctx->CSSetUnorderedAccessViews(3, 1, uav_tex_array_f_out[0].GetAddressOf(), 0);
+	ctx->CSSetUnorderedAccessViews(4, 1, uav_tex_array_f_out[1].GetAddressOf(), 0);
+	ctx->CSSetUnorderedAccessViews(5, 1, uav_tex_array_f_out[2].GetAddressOf(), 0);
+	ctx->CSSetUnorderedAccessViews(6, 1, uav_tex_display.GetAddressOf(), 0);
 	ctx->CSSetShaderResources(0, 1, srv_control_points.GetAddressOf());
 	ctx->CSSetConstantBuffers(0, 1, cbuf_num_control_points.GetAddressOf());
 	//ctx->PSSetShaderResources(0, 1, srv_tex_display.GetAddressOf());
@@ -349,11 +366,11 @@ void LBM_Multicomponent::render()
 	//解决同一个资源同时绑定srv和uav的冲突
 	ID3D11ShaderResourceView* null_srv = nullptr;
 	ID3D11UnorderedAccessView* null_uav = nullptr;
-	ctx->CSSetUnorderedAccessViews(4, 1, &null_uav, 0);
+	ctx->CSSetUnorderedAccessViews(6, 1, &null_uav, 0);
 	ctx->PSSetShaderResources(0, 1, srv_tex_display.GetAddressOf());
 	//绘制
 	ctx->Draw(4, 0);
-	ctx->CSSetUnorderedAccessViews(4, 1, uav_tex_display.GetAddressOf(), 0);
+	ctx->CSSetUnorderedAccessViews(6, 1, uav_tex_display.GetAddressOf(), 0);
 	ctx->PSSetShaderResources(0, 1, &null_srv);
 	dx11_wnd->GetSwapChain()->Present(0, 0);
 }

@@ -10,8 +10,8 @@ static const float w[9] =
     1.0f / 9, 4.0f / 9, 1.0f / 9,
     1.0f / 36, 1.0f / 9, 1.0f / 36
 };
-static const float k = 1.6f;
-
+static const float tau = 0.55f;
+static const float kv = (2 * tau - 1) / 6;
 void collision(uint2 pos)
 {
     float f[9] = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
@@ -63,11 +63,20 @@ void collision(uint2 pos)
             f[i] = eq[i] + f[8 - i] - eq[8 - i];
         }
     }
+    float p = 1.f;
+    [unroll(9)]
+    for (i = 0; i < 9; i++)
+    {
+        p +=v[i].x*v[i].y * (f[i] - eq[i]);
+    }
+    
+    float rho2 = 1e4f;
+    float tau2 = tau + 0.5 * (-tau * rho2 + sqrt(pow(tau * rho2, 2) + 1.62f * p));
     
     [unroll(9)]
     for (i = 0; i < 9; i++)
     {
-        f_in[uint3(pos, i)] =  (1 - k) * f[i] + k * eq[i];
+        f_in[uint3(pos, i)] = clamp((1.f - 1.f / tau2) * f[i] + 1.f / tau2 * eq[i], 0,1e4f);
     }
 }
 

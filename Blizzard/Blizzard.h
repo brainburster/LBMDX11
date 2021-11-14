@@ -17,7 +17,10 @@ private:
 	void initShaders();
 	void initResources();
 	void bindResources();
+	void updateControlPointBuffer();
+	void updateRandSeed();
 	void setInputCallback();
+	void addControlPoint(XMFLOAT2 pos, XMFLOAT2 data);
 
 private:
 	std::shared_ptr<DX11_Wnd> dx11_wnd;
@@ -43,12 +46,16 @@ private:
 	ComPtr<ID3D11PixelShader> ps;
 	//...
 	ComPtr<ID3D11Texture2D> tex_array_f_in;
-	ComPtr<ID3D11Texture2D> tex_array_f_out;
 	ComPtr<ID3D11UnorderedAccessView> uav_tex_array_f_in;
-	ComPtr<ID3D11UnorderedAccessView> uav_tex_array_f_out;
-	ComPtr<ID3D11Texture2D> tex_display;
-	ComPtr<ID3D11UnorderedAccessView> uav_tex_display;
-	ComPtr<ID3D11ShaderResourceView> srv_tex_display;
+	//rho, u.xy, is_wall
+	ComPtr<ID3D11Texture2D> tex0;
+	ComPtr<ID3D11UnorderedAccessView> uav_tex0;
+	ComPtr<ID3D11ShaderResourceView> srv_tex0;
+	//±£¥Ê—©
+	ComPtr<ID3D11Texture2D> tex1;
+	ComPtr<ID3D11UnorderedAccessView> uav_tex1;
+	ComPtr<ID3D11ShaderResourceView> srv_tex1;
+	ComPtr<ID3D11Buffer> cbuf_rand;
 	//...
 	ComPtr<ID3D11ComputeShader> cs_init;
 	ComPtr<ID3D11ComputeShader> cs_draw;
