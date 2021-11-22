@@ -55,5 +55,13 @@
     <FxCompile Include="visualization.hlsl">
       <Filter>shader</Filter>
     </FxCompile>
+    <FxCompile Include="lbm_bundary.hlsl">
+      <Filter>shader</Filter>
+    </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="header.hlsli">
+      <Filter>shader</Filter>
+    </None>
   </ItemGroup>
 </Project>

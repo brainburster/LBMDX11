@@ -11,6 +11,7 @@ public:
 	void run();
 	auto getWnd() { return dx11_wnd; }
 private:
+	void fence();
 	void init();
 	void update();
 	void render();
@@ -45,25 +46,29 @@ private:
 	ComPtr<ID3D11VertexShader> vs;
 	ComPtr<ID3D11PixelShader> ps;
 	//...
-	ComPtr<ID3D11Texture2D> tex_array_f_in;
-	ComPtr<ID3D11UnorderedAccessView> uav_tex_array_f_in;
+	ComPtr<ID3D11Texture2D> tex_array_wind;
+	ComPtr<ID3D11Texture2D> tex_array_snow;
+	ComPtr<ID3D11UnorderedAccessView> uav_tex_array_wind;
+	ComPtr<ID3D11UnorderedAccessView> uav_tex_array_snow;
+
 	//rho, u.xy, is_wall
-	ComPtr<ID3D11Texture2D> tex0;
-	ComPtr<ID3D11UnorderedAccessView> uav_tex0;
-	ComPtr<ID3D11ShaderResourceView> srv_tex0;
+	ComPtr<ID3D11Texture2D> tex_display;
+	ComPtr<ID3D11UnorderedAccessView> uav_tex_display;
+	ComPtr<ID3D11ShaderResourceView> srv_tex_display;
 	//±£¥Ê—©
-	ComPtr<ID3D11Texture2D> tex1;
-	ComPtr<ID3D11UnorderedAccessView> uav_tex1;
-	ComPtr<ID3D11ShaderResourceView> srv_tex1;
 	ComPtr<ID3D11Buffer> cbuf_rand;
 	//...
 	ComPtr<ID3D11ComputeShader> cs_init;
 	ComPtr<ID3D11ComputeShader> cs_draw;
-	ComPtr<ID3D11ComputeShader> cs_lbm_moment_update;
-	ComPtr<ID3D11ComputeShader> cs_lbm_force_calculation;
-	ComPtr<ID3D11ComputeShader> cs_lbm_collision;
-	ComPtr<ID3D11ComputeShader> cs_lbm_streaming;
-	ComPtr<ID3D11ComputeShader> cs_lbm_visualization;
+	ComPtr<ID3D11ComputeShader> cs_lbm1;
+	ComPtr<ID3D11ComputeShader> cs_lbm2;
+	ComPtr<ID3D11ComputeShader> cs_lbm3;
+	ComPtr<ID3D11ComputeShader> cs_snow1;
+	ComPtr<ID3D11ComputeShader> cs_snow2;
+	ComPtr<ID3D11ComputeShader> cs_snow3;
+	ComPtr<ID3D11ComputeShader> cs_snow4;
+
+	ComPtr<ID3D11ComputeShader> cs_visualization;
 
 	struct ControlPoint
 	{
@@ -78,7 +83,8 @@ private:
 
 	enum
 	{
-		num_f_channels = 12,
+		num_wind_channels = 24,
+		num_snow_channels = 4,
 		max_num_control_points = 128,
 	};
 };

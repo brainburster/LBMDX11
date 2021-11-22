@@ -3,18 +3,18 @@
 
 bool is_wall(uint2 pos)
 {
-    if ( pos.y > (600 / 8 - 1) || pos.x > (800 / 8 - 1))
+    if ( pos.y > (600 / 4 - 1) || pos.x > (800 / 4 - 1))
     {
         return true;
     }
-    return uav_display[pos].w < 0.0f;
+    return uav_display[pos].w > 0.0f;
 }
 
 [numthreads(32, 32, 1)]
 void main( uint3 DTid : SV_DispatchThreadID )
 {
     const uint2 pos = DTid.xy;
-    
+
     float f[3][9] =
     {
         { 0, 0, 0, 0, 0, 0, 0, 0, 0 },
@@ -25,6 +25,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
     uint j = 0;
 
     bool flag1 = is_wall(pos);
+   
     
     [unroll]
     for (i = 1; i < 9; i++)

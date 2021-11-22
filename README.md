@@ -1,13 +1,17 @@
 # LBM学习
 
-## 层流&湍流
+## 风传播雪
 
-![capture1](/capture.gif)
+![capture1](/snow.gif)
+
+## 湍流
+
+![capture1](/turbulent.gif)
 
 ## 表面张力
 
-![capture2](/capture2.gif)
+![capture2](/surfacetension.gif)
 
 ## 油和水
 
-![capture3](/capture3.gif)
+![capture3](/multicomponent.gif)

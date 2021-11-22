@@ -15,15 +15,17 @@ void main( uint3 DTid : SV_DispatchThreadID )
             [branch]
             if (cp.data == 3.0 && uav_display[index].w >= 0.f)
             {
-                uav_display[index] = float4(uav_display[index].xyz, -1.0f);
+                uav_display[index] = float4(uav_display[index].xyz, 1.0f);
             }
             else if (cp.data == 2.0)
             {
-                f_in[1][uint3(index.xy, 0)] = 0.2;
+                f_in[0][uint3(index.xy, 0)] = 0.f;
+                f_in[1][uint3(index.xy, 0)] = rho0[1] * 1.2f;
             }
             else if (cp.data == 1.0)
             {
-                f_in[0][uint3(index.xy, 0)] = 1.0;                
+                f_in[0][uint3(index.xy, 0)] = rho0[0] * 1.2f;
+                f_in[1][uint3(index.xy, 0)] = 0.f;
             }
             else if (cp.data == 0.0)
             {

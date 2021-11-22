@@ -20,6 +20,8 @@ public:
 	void process();
 private:
 
+	void dispatch();
+
 	void draw();
 	void handleInput();
 	void draw_point();
@@ -37,7 +39,9 @@ private:
 	void createInTexture();
 	void createCS_lbm_collision();
 	void createCS_lbm_streaming();
+	void createCS_lbm_bundary();
 	void createCS_init();
+
 	void createCS_visualization();
 	void fence();
 
@@ -45,7 +49,9 @@ private:
 	void getBackBuffer();
 	ComPtr<ID3D11ComputeShader> cs_init;
 	ComPtr<ID3D11ComputeShader> cs_lbm_collision;
+	ComPtr<ID3D11ComputeShader> cs_lbm_bundary;
 	ComPtr<ID3D11ComputeShader> cs_lbm_streaming;
+
 	ComPtr<ID3D11ComputeShader> cs_visualization;
 
 	ComPtr<ID3D11Texture2D> back_buffer;
@@ -112,19 +118,18 @@ void LBM::IMPL::init()
 	//创建计算着色器
 	createCS_init();
 	createCS_lbm_collision();
+	createCS_lbm_bundary();
 	createCS_lbm_streaming();
 	createCS_visualization();
 
 	buildResource();
 
-	context->CSSetShader(cs_init.Get(), 0, 0);
-	context->CSSetUnorderedAccessViews(0, 1, uav_tex_array_f0.GetAddressOf(), 0);
-	context->Dispatch(Setting::width / 32, Setting::height / 32, 1);
-
 	context->CSSetShaderResources(0, 1, srv_tex_in.GetAddressOf());
 	context->CSSetUnorderedAccessViews(0, 1, uav_tex_out.GetAddressOf(), 0);
 	context->CSSetUnorderedAccessViews(1, 1, uav_tex_array_f0.GetAddressOf(), 0);
 	context->CSSetUnorderedAccessViews(2, 1, uav_tex_array_f1.GetAddressOf(), 0);
+	context->CSSetShader(cs_init.Get(), 0, 0);
+	dispatch();
 }
 
 void LBM::IMPL::buildResource()
@@ -304,6 +309,17 @@ void LBM::IMPL::createCS_lbm_streaming()
 	}
 }
 
+void LBM::IMPL::createCS_lbm_bundary()
+{
+	ComPtr<ID3DBlob> blob;
+	D3DReadFileToBlob(L"shaders/lbm_bundary.cso", blob.GetAddressOf());
+
+	if (FAILED(device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_lbm_bundary.GetAddressOf())))
+	{
+		throw std::runtime_error("Failed to create compute shader lbm_bundary.cso");
+	}
+}
+
 void LBM::IMPL::createCS_init()
 {
 	ComPtr<ID3DBlob> blob;
@@ -358,11 +374,16 @@ void LBM::IMPL::getBackBuffer()
 	}
 }
 
+void LBM::IMPL::dispatch()
+{
+	context->Dispatch((Setting::width - 1) / 32 + 1, (Setting::height - 1) / 32 + 1, 1);
+}
+
 void LBM::IMPL::draw()
 {
 	fence();
 	context->CSSetShader(cs_visualization.Get(), 0, 0);
-	context->Dispatch(Setting::width / 32, Setting::height / 32, 1);
+	dispatch();
 	fence();
 	context->CopyResource(back_buffer.Get(), tex_out.Get());
 	swap_chain->Present(0, 0);
@@ -392,7 +413,7 @@ void LBM::IMPL::handleInput()
 		}
 		point_buffer.push_back({ pos,20,{213,213,213,255} });
 	}
-	else if (input.mouseBtnDown(2))
+	else if (input.mouseBtnDown(2) || input.mouseBtnDown(1))
 	{
 		Pos pos = input.getMousePos();
 		btndown = true;
@@ -407,7 +428,7 @@ void LBM::IMPL::handleInput()
 			decltype(auto) old = point_buffer.back();
 			point_buffer.pop_back();
 		}
-		point_buffer.push_back({ pos,10,{0,0,0,0} });
+		point_buffer.push_back({ pos,20,{0,0,0,0} });
 	}
 	if (btndown && !input.mouseBtnDown(0) && !input.mouseBtnDown(2)) {
 		btndown = false;
@@ -420,11 +441,15 @@ void LBM::IMPL::update()
 {
 	fence();
 	context->CSSetShader(cs_lbm_streaming.Get(), 0, 0);
-	context->Dispatch(Setting::width / 32, Setting::height / 32, 1);
+	dispatch();
 
 	fence();
 	context->CSSetShader(cs_lbm_collision.Get(), 0, 0);
-	context->Dispatch(Setting::width / 32, Setting::height / 32, 1);
+	dispatch();
+
+	fence();
+	context->CSSetShader(cs_lbm_bundary.Get(), 0, 0);
+	context->Dispatch(2, 1, 1);
 
 	//Sleep(1); //减少cpu占用
 	//...

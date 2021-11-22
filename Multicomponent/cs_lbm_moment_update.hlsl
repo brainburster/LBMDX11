@@ -5,10 +5,10 @@
 void main( uint3 DTid : SV_DispatchThreadID )
 {
     const uint2 pos = DTid.xy;
+
     float f[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     uint i = 0;
     uint j = 0;
-    const float rho0[3] = { 1.f, 0.2f, 0.05f };
     
     [unroll]
     for (j = 0; j < 3; j++)
@@ -25,14 +25,16 @@ void main( uint3 DTid : SV_DispatchThreadID )
         [unroll]
         for (i = 1; i < 9; i++)
         {
-            u += f[0] * c[0];
+            u += f[i] * c[i];
         }
         
-        rho = f[0] + f[1] + f[2] + f[3] + f[4] + f[5] + f[6] + f[7] + f[8];
-    
-        u /= rho;   
+        rho = f[0] + f[1] + f[2] + f[3] + f[4] + f[5] + f[6] + f[7] + f[8] + 1e-20f;
 
-        psi = 1.f - exp(-rho / rho0[j]);
+        u /= rho;
+        psi = sign(rho) * (1.f - exp(-abs(rho) / rho0[j]));
+        //psi = sign(rho) * (exp(-rho0[j] * 0.28f / abs(rho)));
+        
+        
         f_out[j][uint3(pos, 9)] = psi;
         f_in[j][uint3(pos, 9)] = rho;
         f_in[j][uint3(pos, 10)] = u.x;

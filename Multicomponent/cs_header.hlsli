@@ -15,3 +15,5 @@ struct ControlPoint
 };
 
 StructuredBuffer<ControlPoint> control_points : register(t0);
+
+static const float3 rho0 = { 0.25f, 0.1f, 0.01f };

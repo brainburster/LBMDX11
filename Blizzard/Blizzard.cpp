@@ -25,12 +25,73 @@ void Blizzard::init()
 	initResources();
 	bindResources();
 	setInputCallback();
+	auto ctx = dx11_wnd->GetImCtx();
+	//...
+	fence();
+	const UINT ThreadGroupCountX = (dx11_wnd->getWidth() - 1) / 32 + 1;
+	const UINT ThreadGroupCountY = (dx11_wnd->getWidth() - 1) / 32 + 1;
+	ctx->CSSetShader(cs_init.Get(), NULL, 0);
+	ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
+	fence();
+}
+
+void Blizzard::fence()
+{
+	decltype(auto) device = dx11_wnd->GetDevice();
+	decltype(auto) ctx = dx11_wnd->GetImCtx();
+	ComPtr<ID3D11Query> event_query;
+	D3D11_QUERY_DESC queryDesc{};
+	queryDesc.Query = D3D11_QUERY_EVENT;
+	queryDesc.MiscFlags = 0;
+	device->CreateQuery(&queryDesc, event_query.GetAddressOf());
+	ctx->End(event_query.Get());
+	while (ctx->GetData(event_query.Get(), NULL, 0, 0) == S_FALSE) {}
 }
 
 void Blizzard::update()
 {
 	auto device = dx11_wnd->GetDevice();
 	auto ctx = dx11_wnd->GetImCtx();
+	const int width = dx11_wnd->getWidth();
+	const int height = dx11_wnd->getHeight();
+	const UINT ThreadGroupCountX = (width - 1) / 32 + 1;
+	const UINT ThreadGroupCountY = (height - 1) / 32 + 1;
+	//更新
+	//应用控制点
+	if (control_points.size() > 0)
+	{
+		fence();
+		updateControlPointBuffer();
+		control_points.clear();
+		ctx->CSSetShader(cs_draw.Get(), NULL, 0);
+		ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
+	}
+	fence();
+	ctx->CSSetShader(cs_lbm1.Get(), NULL, 0);
+	ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
+	fence();
+	ctx->CSSetShader(cs_lbm2.Get(), NULL, 0);
+	ctx->Dispatch(2, 1, 1);
+	fence();
+	ctx->CSSetShader(cs_lbm3.Get(), NULL, 0);
+	ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
+	fence();
+	updateRandSeed();
+	ctx->CSSetShader(cs_snow1.Get(), NULL, 0);
+	ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
+	fence();
+	ctx->CSSetShader(cs_snow2.Get(), NULL, 0);
+	ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
+	fence();
+	ctx->CSSetShader(cs_snow3.Get(), NULL, 0);
+	ctx->Dispatch((width / 2 - 1) / 32 + 1, (height / 2 - 1) / 32 + 1, 1);
+	fence();
+	ctx->CSSetShader(cs_snow4.Get(), NULL, 0);
+	ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
+	fence();
+	ctx->CSSetShader(cs_visualization.Get(), NULL, 0);
+	ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
+	fence();
 }
 
 void Blizzard::render()
@@ -39,8 +100,17 @@ void Blizzard::render()
 	constexpr float back_color[4] = { 0.f,0.f,0.f,1.f };
 	ctx->ClearRenderTargetView(dx11_wnd->GetRTV(), back_color);
 	ctx->ClearDepthStencilView(dx11_wnd->GetDsv(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.f, 0);
+	ID3D11ShaderResourceView* null_srv = nullptr;
+	ID3D11UnorderedAccessView* null_uav = nullptr;
+	ctx->CSSetUnorderedAccessViews(2, 1, &null_uav, 0);
+	ctx->PSSetShaderResources(0, 1, srv_tex_display.GetAddressOf());
+	fence();
 
 	ctx->Draw(4, 0);
+
+	ctx->CSSetUnorderedAccessViews(2, 1, uav_tex_display.GetAddressOf(), 0);
+	ctx->PSSetShaderResources(0, 1, &null_srv);
+
 	dx11_wnd->GetSwapChain()->Present(0, 0);
 }
 
@@ -71,8 +141,7 @@ void Blizzard::initShaders()
 	)";
 
 	constexpr char ps_src[] = R"(
-		Texture2D<float4> srv_tex0 : register(t0);
-		Texture2D<float4> srv_tex1 : register(t1);
+		Texture2D<float4> srv_display : register(t0);
 
 		SamplerState sampler0
 		{
@@ -89,37 +158,54 @@ void Blizzard::initShaders()
 
 		float4 main(VsOut vs_out) : SV_TARGET
 		{
-			float4 data0 = srv_tex0.Sample(sampler0, vs_out.uv);
-			float4 data1 = srv_tex1.Sample(sampler0, vs_out.uv);
+			float4 data = srv_display.Sample(sampler0, vs_out.uv);
 
 			float4 wall_color = float4(0.25f, 0.25f, 0.25f, 1.0f)* abs(data.w);
-			float4 color = float4(data1,data1,data1, 1.0f);
+			float4 snow_color = float4(0.55f,0.55f,0.55f,1.f);
+			float4 snow_wall_color = float4(0.8f,0.8f,0.8f,1.f);
+			float4 wind_color = float4(0.1f,data.r+0.1f,0.1f,1.f);
 
-			if (data.w < 0.0f)
-			{
-				return wall_color * abs(data.w);
-			}
-			return float4(vs_out.uv,0.f,0.f);
+			return lerp(lerp(wind_color,lerp(snow_color,snow_wall_color,data.g),data.b+data.g),wall_color,data.w);
 		}
 	)";
 
 	constexpr char cs_init_src[] = R"(
 		RWTexture2DArray<float> f_in : register(u0);
 
-		[numthreads(16, 16, 1)]
+		[numthreads(32, 32, 1)]
 		void main(uint3 DTid : SV_DispatchThreadID)
 		{
+			f_in[uint3(DTid.xy, 1)] = .07f;
+			f_in[uint3(DTid.xy, 0)] = .05f;
 			[unroll]
-			for (uint i = 0; i < 9; i++)
-			{
-				f_in[uint3(DTid.xy, i)] = 0.1f;
-			}
+            for (uint i = 2; i < 9; i++)
+            {
+				f_in[uint3(DTid.xy, i)] = .05f;
+            }
+		}
+	)";
+
+	constexpr char cs_visualization_src[] = R"(
+		RWTexture2DArray<float> f_in : register(u0);
+		RWTexture2DArray<int> snow : register(u1);
+		RWTexture2D<float4> uav_display : register(u2);
+
+		[numthreads(32, 32, 1)]
+		void main(uint3 DTid : SV_DispatchThreadID)
+		{
+			const uint2 pos = DTid.xy;
+			const float is_wall = f_in[uint3(pos,12)];
+			const int snow_particle = snow[uint3(pos, 0)];
+			const int snow_wall = snow[uint3(pos, 3)];
+			const float air = length(float2( f_in[uint3(pos,10)], f_in[uint3(pos,11)])); //f_in[uint3(pos,9)];
+			uav_display[pos] = float4(air, snow_wall, snow_particle, is_wall);
 		}
 	)";
 
 	constexpr char cs_draw_src[] = R"(
-		RWTexture2D<float4> tex0 : register(u1);
-		RWTexture2D<float4> tex1 : register(u2);
+		RWTexture2DArray<float> f_in : register(u0);
+		RWTexture2DArray<int> snow : register(u1);
+
 		cbuffer PerFrame : register(b0)
 		{
 			uint num_control_point;
@@ -134,39 +220,40 @@ void Blizzard::initShaders()
 
 		StructuredBuffer<ControlPoint> control_points : register(t0);
 
-		[numthreads(16, 16, 1)]
+		[numthreads(32, 32, 1)]
 		void main(uint3 DTid : SV_DispatchThreadID)
 		{
-			const uint2 index = DTid.xy;
+			const uint2 pos = DTid.xy;
 			[loop]
-			for (int i = 0; i < num_control_point; i++)
+			for (uint i = 0; i < num_control_point; i++)
 			{
 				ControlPoint cp = control_points[i];
 				[branch]
-				if (distance(index, cp.pos) < cp.dis)
+				if (distance(pos, cp.pos) < cp.dis)
 				{
 					[branch]
-					if (cp.data == 2.0)
+					if (cp.data == 2.0f)
 					{
-						tex0[index] = float4(0,0,0,1);
+						f_in[uint3(pos, 12)] = 1.f;
 					}
-					else if (cp.data == 1.0)
+					else if (cp.data == 1.0f)
 					{
-						tex1[index] = float4(1,0,0,0);
+						snow[uint3(pos, 0)] = 1;
 					}
-					else if (cp.data == 0.0)
+					else if (cp.data == 0.0f || cp.data == 3.0f)
 					{
-						tex0[index] = float4(0,0,0,0);
-						tex1[index] = float4(0,0,0,0);
+						f_in[uint3(pos, 12)] = 0.f;
+						snow[uint3(pos, 0)] = 0;
+						snow[uint3(pos, 3)] = 0;
 					}
 				}
 			}
 		}
 	)";
 
-	constexpr char cs_lbm_src[] = R"(
+	constexpr char cs_lbm1_src[] = R"(
 		RWTexture2DArray<float> f_in : register(u0);
-		RWTexture2D<float4> tex0 : register(u1);
+		RWTexture2DArray<int> snow : register(u1);
 
 		// d2q9 velocity sets:
 		//
@@ -176,7 +263,9 @@ void Blizzard::initShaders()
 		//      ↙ ↓ ↘
 		//    7    4     8
 
-		static const int2 c[9] = { { 0, 0 }, { 1, 0 }, { 0, -1 }, { -1, 0 }, { 0, 1 }, { 1, -1 }, { -1, -1 }, { -1, 1 }, { 1, 1 } };
+		static const int2 c[9] = { { 0, 0 },
+			 { 1, 0 }, { 0, -1 }, { -1, 0 }, { 0, 1 },
+			{ 1, -1 }, { -1, -1 }, { -1, 1 }, { 1, 1 } };
 		static const float w[9] =
 		{
 			4.f / 9.f,
@@ -186,86 +275,437 @@ void Blizzard::initShaders()
 		static const uint oppo[9] = {
 			0, 3, 4, 1, 2, 7, 8, 5, 6
 		};
-		static const float k = 1.2f;
 
-		bool is_wall(uint2 pos)
-		{
-			if (pos.x < 0 || pos.y > 599 || pos.y < 0 || pos.x > 799)
-			{
-				return true;
-			}
-			return tex0[pos].w < 0.0;
-		}
+		static const float tau = 0.501f;
+		static const float k = 1.f/tau;
 
-		[numthreads(16, 16, 1)]
+		[numthreads(32, 32, 1)]
 		void main(uint3 DTid : SV_DispatchThreadID)
 		{
-			const uint2 pos = DTid.xy;
+			const int2 pos = DTid.xy;
 			float f[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+			float f_eq[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 			uint i = 0;
-			//float f1[9] = { };
-			//传输/反弹
-			bool flag1 = is_wall(pos);
-			f[0] = f_in[0][uint3(pos, 0)];
-			for (i = 1; i < 9; i++)
+
+			[unroll]
+			for (i = 0; i < 9; i++)
 			{
-				uint2 pos_2 = pos + c[oppo[i]];
-				bool flag2 = is_wall(pos_2);
-				if (flag1)
-				{
-					f[i] = 0.0;
-				}
-				else if (flag2)
-				{
-					f[i] = f_in[0][uint3(pos, oppo[i])];
-					f[i] += f_in[0][uint3(pos_2, i)];
-				}
-				else
-				{
-					f[i] = f_in[0][uint3(pos_2, i)];
-				}
+				f[i] = f_in[uint3(pos, i)];
 			}
 
-			//计算受力
-			//...
-
-			//预计算
-			float rho = f[0] + f[1] + f[2] + f[3] + f[4] + f[5] + f[6] + f[7] + f[8];
+			float rho = f[0] + f[1] + f[2] + f[3] + f[4] + f[5] + f[6] + f[7] + f[8] +1e-20f;
 			float2 u = { 0.f, 0.f };
 
 			[unroll]
 			for (i = 1; i < 9; i++)
 			{
-				u += f[0] * c[0];
+				u += f[i] * c[i];
 			}
 			u /= rho;
-			u.y += 0.005;
+			u*=saturate(1.f-(snow[uint3(pos,0)]+snow[uint3(pos, 3)]*2.5f)*.03f);
+			//...
+			f_in[uint3(pos, 9)] = rho;
+			f_in[uint3(pos, 10)] = u.x;
+			f_in[uint3(pos, 11)] = u.y;
 
-			//碰撞
-			float u_sqr = 1.5 * (u.x * u.x + u.y * u.y);
+			if (length(u) > 0.57f)
+			{
+				u = normalize(u) * 0.57f;
+			}
+
+			float u_sqr = 1.5f * dot(u, u);
+
 			[unroll]
 			for (i = 0; i < 9; i++)
 			{
-				float cu = 3.0 * (c[i].x * u.x + c[i].y * u.y);
-				float f_eq = rho * w[i] * (1.0 + cu + 0.5 * cu * cu - u_sqr);
-				f[i] = (1.0 - k) * f[i] + k * f_eq;
+				float cu = 3.f * dot(c[i], u);
+				f_eq[i] = rho * w[i] * (1.f + cu + 0.5 * cu * cu - u_sqr);
+			}
+
+			float p = 0.f;
+			[unroll(2)]
+			for (uint a = 0; a < 2; a++)
+			{
+				[unroll(2)]
+				for (uint b = 0; b < 2; b++)
+				{
+					[unroll]
+					for (i = 0; i < 9; i++)
+					{
+						p += pow(c[i][a] * c[i][b] * (f[i] - f_eq[i]), 2);
+					}
+				}
+			}
+
+			float tau2 = tau + 0.5f * (-tau + sqrt(pow(tau, 2) + 1.62f * sqrt(p)));
+
+			[unroll]
+			for (i = 0; i < 9; i++)
+			{
+				//f[i] = (1.f - k) * f[i] + k * f_eq[i];
+				f[i] = (1.f - 1.f / tau2) * f[i] + 1.f / tau2 * f_eq[i];
 			}
 
 			[unroll]
 			for (i = 0; i < 9; i++)
 			{
-				f_in[0][uint3(pos, i)] = f[i];
+				f_in[uint3(pos, i+13)] = f[i];
+			}
+		}
+	)";
+	constexpr char cs_lbm2_src[] = R"(
+		RWTexture2DArray<float> f_in : register(u0);
+		RWTexture2DArray<int> snow : register(u1);
+		static const int2 c[9] = { { 0, 0 },
+			 { 1, 0 }, { 0, -1 }, { -1, 0 }, { 0, 1 },
+			{ 1, -1 }, { -1, -1 }, { -1, 1 }, { 1, 1 } };
+		static const float w[9] =
+		{
+			4.f / 9.f,
+			1.f / 9.f, 1.f / 9.f, 1.f / 9.f, 1.f / 9.f,
+			1.f / 36.f, 1.f / 36.f, 1.f / 36.f, 1.f / 36.f
+		};
+		static const uint oppo[9] = {
+			0, 3, 4, 1, 2, 7, 8, 5, 6
+		};
+		[numthreads(1, 599, 1)]
+		void main(uint3 DTid : SV_DispatchThreadID)
+		{
+			const uint2 pos ={
+				DTid.x ? 799 : 0,
+				DTid.y
+			};
+			if (pos.x)
+			{
+				[unroll]
+				for (uint i = 0; i < 9; i++)
+				{
+					f_in[uint3(pos, i+13)] = f_in[uint3(pos + uint2(-1, 0), i+13)];
+					//f_in[uint3(pos, i+13)] = f_in[uint3(pos + uint2(-2, 0), i+13)] * 2 - f_in[uint3(pos + uint2(-1, 0), i+13)];
+					//f_in[uint3(pos, i+13)] = f_in[uint3(pos + uint2(-1, 0), i+13)] * 1.5f - f_in[uint3(pos + uint2(-2, 0), i+13)] * 0.5f;
+				}
+			}
+			else
+			{
+				float f[9] = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
+				uint i = 0;
+				float rho = 0;
+				float2 u = { 0.0f, 0.0f };
+				//
+				[unroll]
+				for (i = 0; i < 9; i++)
+				{
+					f[i] = f_in[uint3(pos, i+13)];
+				}
+
+				u = float2(0.04f, 0);
+				rho = 1 / (1 - u.x) * (f[2] + f[0] + f[4] + (f[6] + f[3] + f[7]) * 2 + 1e-20f);
+
+				const float usqr = 1.5 * dot(u, u);
+				float eq[9] = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
+
+				[unroll]
+				for (i = 0; i < 9; i++)
+				{
+					float cu = 3.f * dot(u, c[i]);
+					eq[i] = rho * w[i] * (1.f + cu + 0.5f * cu * cu - usqr);
+				}
+
+				f[5] = eq[5] + f[oppo[5]] - eq[oppo[5]];
+				f[1] = eq[1] + f[oppo[1]] - eq[oppo[1]];
+				f[8] = eq[8] + f[oppo[8]] - eq[oppo[8]];
+
+				[unroll]
+				for (i = 0; i < 9; i++)
+				{
+					f_in[uint3(pos, i+13)] = f[i];
+				}
+			}
+		}
+	)";
+	constexpr char cs_lbm3_src[] = R"(
+		RWTexture2DArray<float> f_in : register(u0);
+		RWTexture2DArray<int> snow : register(u1);
+		static const int2 c[9] = { { 0, 0 },
+			 { 1, 0 }, { 0, -1 }, { -1, 0 }, { 0, 1 },
+			{ 1, -1 }, { -1, -1 }, { -1, 1 }, { 1, 1 } };
+		static const uint oppo[9] = {
+			0, 3, 4, 1, 2, 7, 8, 5, 6
+		};
+
+		bool is_wall(uint2 pos)
+		{
+			return pos.y > 599u || pos.x > 799u|| f_in[uint3(pos, 12)] > 0.f;
+		}
+
+		[numthreads(32, 32, 1)]
+		void main(uint3 DTid : SV_DispatchThreadID)
+		{
+			const int2 pos = DTid.xy;
+			bool flag1 = is_wall(pos);
+			f_in[uint3(pos, 0)] = f_in[uint3(pos, 13)];
+			for (uint i = 1; i < 9; i++)
+			{
+				uint2 pos_2 = pos + c[oppo[i]];
+				bool flag2 = is_wall(pos_2);
+				if (flag1)
+				{
+					f_in[uint3(pos, i)] = 0.0f;
+				}
+				else if (flag2)
+				{
+					f_in[uint3(pos, i)] = f_in[uint3(pos, oppo[i]+13)];
+				}
+				else
+				{
+					f_in[uint3(pos, i)] = f_in[uint3(pos_2, i+13)];
+				}
+			}
+		}
+	)";
+
+	constexpr char cs_snow1_src[] = R"(
+		RWTexture2DArray<float> f_in : register(u0);
+		RWTexture2DArray<int> snow : register(u1);
+
+		static const int2 v[5] = { { 0, 0 }, { 1, 0 }, { 0, -1 }, { -1, 0 }, { 0, 1 } };
+
+		cbuffer PerFrame : register(b1)
+		{
+			float rand;
+		};
+
+		uint3 pcg3d(uint3 v)
+		{
+			v = v * 1664525u + 1013904223u;
+
+			v.x += v.y * v.z;
+			v.y += v.z * v.x;
+			v.z += v.x * v.y;
+
+			v ^= v >> 16u;
+
+			v.x += v.y * v.z;
+			v.y += v.z * v.x;
+			v.z += v.x * v.y;
+
+			return v;
+		}
+
+		float3 rand3(float3 seed)
+		{
+			return frac(float3(pcg3d(uint3((seed + float3(1.0f, 1.0f, 1.0f)) * 999999.f))) * (1.0 / float(0xffffffffu)));
+		}
+
+		bool is_wall(uint2 pos)
+		{
+			return pos.y > 599u || pos.x > 799u|| f_in[uint3(pos, 12)] > 0.f || snow[uint3(pos, 3)] > 0;
+		}
+
+		[numthreads(32, 32, 1)]
+		void main(uint3 DTid : SV_DispatchThreadID)
+		{
+			const int2 pos = DTid.xy;
+			const float2 u = float2(f_in[uint3(pos, 10)], f_in[uint3(pos, 11)] + .02f)*10.f;
+			float2 rand2 = rand3(float3(rand, pos.x, pos.y)).xy;
+			int f = snow[uint3(pos, 0)];
+			if(pos.x==3u&& pos.y %4 == 1&&pos.y<500&&rand<0.05f)
+			{
+				f = 1;
+			}
+			if(pos.x<3u)
+			{
+				f = 0;
+			}
+			if(f > 0)
+			{
+				float px = dot(v[1], u);
+				float pnx = dot(v[3], u);
+				float py = dot(v[4], u);
+				float pny = dot(v[2], u);
+				int offx = step(rand2.x,max(px,pnx))*((rand2.x<px)?1:-1);
+				int offy = step(rand2.y,max(py,pny))*((rand2.y<py)?1:-1);
+
+				int2 off = { offx,offy };
+				//int2 off = { (rand< 0.5f)?1:-1, (rand< 0.5f)?1:-1 };
+				int2 pos2 = pos + off;
+				if(is_wall(pos2))
+				{
+					return ;
+				}
+				InterlockedAdd(snow[uint3(pos2, 1)], 1);
+				//rand2 = rand3(float3(rand2,rand)).xy;
+				f--;
+			}
+			snow[uint3(pos, 0)]=f;
+			//...
+		}
+	)";
+
+	constexpr char cs_snow2_src[] = R"(
+		RWTexture2DArray<float> f_in : register(u0);
+		RWTexture2DArray<int> snow : register(u1);
+
+		cbuffer PerFrame : register(b1)
+		{
+			float rand;
+		};
+
+		[numthreads(32, 32, 1)]
+		void main(uint3 DTid : SV_DispatchThreadID)
+		{
+			const int2 pos = DTid.xy;
+			int f = snow[uint3(pos, 0)];
+			f += snow[uint3(pos, 1)];
+
+			if(f > 5 && rand>0.5f)
+			{
+				snow[uint3(pos, 3)] = f;
+				f = 0;
 			}
 
-			//显示
-			tex0[pos] = float4(rho0, u.x, u.y, tex0[pos].w);
+			snow[uint3(pos, 0)] = f;
+			snow[uint3(pos, 1)] = 0;
+		}
+	)";
+	constexpr char cs_snow3_src[] = R"(
+		RWTexture2DArray<float> f_in : register(u0);
+		RWTexture2DArray<int> snow : register(u1);
+
+		cbuffer PerFrame : register(b1)
+		{
+			float rand;
+		};
+
+		uint3 pcg3d(uint3 v)
+		{
+			v = v * 1664525u + 1013904223u;
+
+			v.x += v.y * v.z;
+			v.y += v.z * v.x;
+			v.z += v.x * v.y;
+
+			v ^= v >> 16u;
+
+			v.x += v.y * v.z;
+			v.y += v.z * v.x;
+			v.z += v.x * v.y;
+
+			return v;
+		}
+
+		float3 rand3(float x,float y,float z)
+		{
+			return frac(float3(pcg3d(uint3((float3(x,y,z) + float3(1.0f, 1.0f, 1.0f)) * 999999.f))) * (1.0 / float(0xffffffffu)));
+		}
+
+		static const int2 d[4] = {{0,0},{0,-1},{1,0},{1,-1}};
+
+		bool is_wall(uint2 pos)
+		{
+			return pos.y > 598u || pos.x > 799u|| f_in[uint3(pos, 12)] > 0.f;
+		}
+
+		[numthreads(32, 32, 1)]
+		void main(uint3 DTid : SV_DispatchThreadID)
+		{
+			const int2 pos = {DTid.x*2+step(rand,0.5f), DTid.y*2+step(rand,0.5f)};
+			if(pos.y>599)
+			{
+				return;
+			}
+			if(is_wall(pos)||is_wall(pos+d[2])||is_wall(pos+d[1])||is_wall(pos+d[3]))
+			{
+				return;
+			}
+
+			int f[4] = {
+				snow[uint3(pos, 3)],
+				snow[uint3(pos+d[1], 3)],
+				snow[uint3(pos+d[2], 3)],
+				snow[uint3(pos+d[3], 3)],
+			};
+
+			float ux = f_in[uint3(pos, 10)];
+			float uy = f_in[uint3(pos, 10)]+0.3f;
+
+			float3 r = rand3(rand,pos.x,pos.y);
+			if(r.x<abs(ux*20)&&(f[1]>f[3]&&ux>0)||(f[1]<f[3]&&ux<0))
+			{
+				int t= f[1];
+				f[1] = f[3];
+				f[3] = t;
+			}
+			if(r.y<uy*10)
+			{
+				if(f[0]<f[1])
+				{
+					int t= f[0];
+					f[0] = f[1];
+					f[1] = t;
+				}
+				if(f[2]<f[3])
+				{
+					int t= f[2];
+					f[2] = f[3];
+					f[3] = t;
+				}
+			}
+			if(r.z<0.1f)
+			{
+				if(f[2]<f[1])
+				{
+					int t= f[2];
+					f[2] = f[1];
+					f[1] = t;
+				}
+				if(f[0]<f[3])
+				{
+					int t= f[0];
+					f[0] = f[3];
+					f[3] = t;
+				}
+			}
+			snow[uint3(pos, 3)] = f[0];
+			snow[uint3(pos+d[1], 3)]=f[1];
+			snow[uint3(pos+d[2], 3)]=f[2];
+			snow[uint3(pos+d[3], 3)]=f[3];
+		}
+	)";
+	constexpr char cs_snow4_src[] = R"(
+		RWTexture2DArray<float> f_in : register(u0);
+		RWTexture2DArray<int> snow : register(u1);
+
+		cbuffer PerFrame : register(b1)
+		{
+			float rand;
+		};
+
+		static const int2 d[4] = {{0,0},{0,-1},{1,0},{1,-1}};
+
+		[numthreads(32, 32, 1)]
+		void main(uint3 DTid : SV_DispatchThreadID)
+		{
+			const int2 pos = {DTid.x, DTid.y};
+			const float2 u = float2(f_in[uint3(pos, 10)], f_in[uint3(pos, 11)]);
+			int sw = snow[uint3(pos, 3)];
+			if(pos.x<3u||pos.x>797)
+			{
+				snow[uint3(pos, 3)] = 0;
+				snow[uint3(pos, 0)] = 0;
+			}
+			else if(sw>0&&rand<(pow(length(u),2)*50.f))
+			{
+				snow[uint3(pos, 3)] = 0;
+				snow[uint3(pos, 0)] += sw;
+			}
 		}
 	)";
 
 	ComPtr<ID3DBlob> blob{};
 	ComPtr<ID3DBlob> error{};
 	HRESULT hr = NULL;
-	hr = D3DCompile(vs_src, sizeof(vs_src), "vs", nullptr, nullptr, "main", "vs_5_0", 0, 0, blob.ReleaseAndGetAddressOf(), error.ReleaseAndGetAddressOf());
+	hr = D3DCompile(vs_src, strlen(vs_src), "vs", nullptr, nullptr, "main", "vs_5_0", 0, 0, blob.ReleaseAndGetAddressOf(), error.ReleaseAndGetAddressOf());
 	HR_ASSERT(hr, (char*)error->GetBufferPointer());
 	hr = device->CreateVertexShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, vs.GetAddressOf());
 	HR_ASSERT(hr, "failed to create VertexShader");
@@ -274,13 +714,81 @@ void Blizzard::initShaders()
 	HR_ASSERT(hr, "failed to create InputLayout");
 
 	//创建PS shader
-	hr = D3DCompile(ps_src, sizeof(ps_src), "ps", nullptr, nullptr, "main", "ps_5_0", 0, 0, blob.ReleaseAndGetAddressOf(), error.ReleaseAndGetAddressOf());
+	hr = D3DCompile(ps_src, strlen(ps_src), "ps", nullptr, nullptr, "main", "ps_5_0", 0, 0, blob.ReleaseAndGetAddressOf(), error.ReleaseAndGetAddressOf());
 	HR_ASSERT(hr, (char*)error->GetBufferPointer());
 
 	hr = device->CreatePixelShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, ps.GetAddressOf());
 	HR_ASSERT(hr, "failed to create PixelShader");
 
 	//
+	//创建CS draw
+	hr = D3DCompile(cs_draw_src, strlen(cs_draw_src), "cs_draw", nullptr, nullptr, "main", "cs_5_0", 0, 0, blob.ReleaseAndGetAddressOf(), error.ReleaseAndGetAddressOf());
+	HR_ASSERT(hr, (char*)error->GetBufferPointer());
+
+	hr = device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_draw.GetAddressOf());
+	HR_ASSERT(hr, "failed to create cs_draw");
+
+	//创建CS visualization
+	hr = D3DCompile(cs_visualization_src, strlen(cs_visualization_src), "cs_visualization", nullptr, nullptr, "main", "cs_5_0", 0, 0, blob.ReleaseAndGetAddressOf(), error.ReleaseAndGetAddressOf());
+	HR_ASSERT(hr, (char*)error->GetBufferPointer());
+
+	hr = device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_visualization.GetAddressOf());
+	HR_ASSERT(hr, "failed to create cs_visualization");
+
+	//创建CS init
+	hr = D3DCompile(cs_init_src, strlen(cs_init_src), "cs_init", nullptr, nullptr, "main", "cs_5_0", 0, 0, blob.ReleaseAndGetAddressOf(), error.ReleaseAndGetAddressOf());
+	HR_ASSERT(hr, (char*)error->GetBufferPointer());
+
+	hr = device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_init.GetAddressOf());
+	HR_ASSERT(hr, "failed to create cs_init");
+
+	//创建CS lbm1
+	hr = D3DCompile(cs_lbm1_src, strlen(cs_lbm1_src), "cs_lbm1", nullptr, nullptr, "main", "cs_5_0", 0, 0, blob.ReleaseAndGetAddressOf(), error.ReleaseAndGetAddressOf());
+	HR_ASSERT(hr, (char*)error->GetBufferPointer());
+
+	hr = device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_lbm1.GetAddressOf());
+	HR_ASSERT(hr, "failed to create cs_lbm1");
+	//创建CS lbm2
+	hr = D3DCompile(cs_lbm2_src, strlen(cs_lbm2_src), "cs_lbm2", nullptr, nullptr, "main", "cs_5_0", 0, 0, blob.ReleaseAndGetAddressOf(), error.ReleaseAndGetAddressOf());
+	HR_ASSERT(hr, (char*)error->GetBufferPointer());
+
+	hr = device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_lbm2.GetAddressOf());
+	HR_ASSERT(hr, "failed to create cs_lbm2");
+
+	//创建CS lbm3
+	hr = D3DCompile(cs_lbm3_src, strlen(cs_lbm3_src), "cs_lbm3", nullptr, nullptr, "main", "cs_5_0", 0, 0, blob.ReleaseAndGetAddressOf(), error.ReleaseAndGetAddressOf());
+	HR_ASSERT(hr, (char*)error->GetBufferPointer());
+
+	hr = device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_lbm3.GetAddressOf());
+	HR_ASSERT(hr, "failed to create cs_lbm3");
+
+	//创建CS snow1
+	hr = D3DCompile(cs_snow1_src, strlen(cs_snow1_src), "cs_snow1", nullptr, nullptr, "main", "cs_5_0", 0, 0, blob.ReleaseAndGetAddressOf(), error.ReleaseAndGetAddressOf());
+	HR_ASSERT(hr, (char*)error->GetBufferPointer());
+
+	hr = device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_snow1.GetAddressOf());
+	HR_ASSERT(hr, "failed to create cs_snow1");
+
+	//创建CS snow2
+	hr = D3DCompile(cs_snow2_src, strlen(cs_snow2_src), "cs_snow2", nullptr, nullptr, "main", "cs_5_0", 0, 0, blob.ReleaseAndGetAddressOf(), error.ReleaseAndGetAddressOf());
+	HR_ASSERT(hr, (char*)error->GetBufferPointer());
+
+	hr = device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_snow2.GetAddressOf());
+	HR_ASSERT(hr, "failed to create cs_snow2");
+
+	//创建CS snow3
+	hr = D3DCompile(cs_snow3_src, strlen(cs_snow3_src), "cs_snow3", nullptr, nullptr, "main", "cs_5_0", 0, 0, blob.ReleaseAndGetAddressOf(), error.ReleaseAndGetAddressOf());
+	HR_ASSERT(hr, (char*)error->GetBufferPointer());
+
+	hr = device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_snow3.GetAddressOf());
+	HR_ASSERT(hr, "failed to create cs_snow3");
+
+	//创建CS snow4
+	hr = D3DCompile(cs_snow4_src, strlen(cs_snow4_src), "cs_snow4", nullptr, nullptr, "main", "cs_5_0", 0, 0, blob.ReleaseAndGetAddressOf(), error.ReleaseAndGetAddressOf());
+	HR_ASSERT(hr, (char*)error->GetBufferPointer());
+
+	hr = device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_snow4.GetAddressOf());
+	HR_ASSERT(hr, "failed to create cs_snow4");
 }
 
 void Blizzard::initResources()
@@ -308,25 +816,19 @@ void Blizzard::initResources()
 	srv_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 	srv_desc.Texture2D.MipLevels = 1;
 
-	//tex0,tex1
-	hr = device->CreateTexture2D(&tex_desc, 0, tex0.GetAddressOf());
+	//tex_display,tex1
+	hr = device->CreateTexture2D(&tex_desc, 0, tex_display.GetAddressOf());
 	assert(SUCCEEDED(hr));
-	hr = device->CreateUnorderedAccessView(tex0.Get(), &uav_desc, uav_tex0.GetAddressOf());
+	hr = device->CreateUnorderedAccessView(tex_display.Get(), &uav_desc, uav_tex_display.GetAddressOf());
 	assert(SUCCEEDED(hr));
-	hr = device->CreateShaderResourceView(tex0.Get(), &srv_desc, srv_tex0.GetAddressOf());
-	assert(SUCCEEDED(hr));
-	hr = device->CreateTexture2D(&tex_desc, 0, tex1.GetAddressOf());
-	assert(SUCCEEDED(hr));
-	hr = device->CreateUnorderedAccessView(tex0.Get(), &uav_desc, uav_tex1.GetAddressOf());
-	assert(SUCCEEDED(hr));
-	hr = device->CreateShaderResourceView(tex0.Get(), &srv_desc, srv_tex1.GetAddressOf());
+	hr = device->CreateShaderResourceView(tex_display.Get(), &srv_desc, srv_tex_display.GetAddressOf());
 	assert(SUCCEEDED(hr));
 
-	//f_in
+	//snow
 	tex_desc = {};
-	tex_desc.Width = dx11_wnd->getWidth() / 8;
-	tex_desc.Height = dx11_wnd->getHeight() / 8;
-	tex_desc.ArraySize = num_f_channels;
+	tex_desc.Width = dx11_wnd->getWidth();
+	tex_desc.Height = dx11_wnd->getHeight();
+	tex_desc.ArraySize = num_wind_channels;
 	tex_desc.Format = DXGI_FORMAT_R32_FLOAT;
 	tex_desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS;
 	tex_desc.CPUAccessFlags = 0;
@@ -335,10 +837,29 @@ void Blizzard::initResources()
 	uav_desc = {};
 	uav_desc.Format = tex_desc.Format;
 	uav_desc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
-	uav_desc.Texture2DArray.ArraySize = num_f_channels;
-	hr = device->CreateTexture2D(&tex_desc, 0, tex_array_f_in.GetAddressOf());
+	uav_desc.Texture2DArray.ArraySize = num_wind_channels;
+	hr = device->CreateTexture2D(&tex_desc, 0, tex_array_wind.GetAddressOf());
 	assert(SUCCEEDED(hr));
-	hr = device->CreateUnorderedAccessView(tex_array_f_in.Get(), &uav_desc, uav_tex_array_f_in.GetAddressOf());
+	hr = device->CreateUnorderedAccessView(tex_array_wind.Get(), &uav_desc, uav_tex_array_wind.GetAddressOf());
+	assert(SUCCEEDED(hr));
+
+	//wind
+	tex_desc = {};
+	tex_desc.Width = dx11_wnd->getWidth();
+	tex_desc.Height = dx11_wnd->getHeight();
+	tex_desc.ArraySize = num_snow_channels;
+	tex_desc.Format = DXGI_FORMAT_R32_SINT;
+	tex_desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS;
+	tex_desc.CPUAccessFlags = 0;
+	tex_desc.MipLevels = 1;
+	tex_desc.SampleDesc.Count = 1;
+	uav_desc = {};
+	uav_desc.Format = tex_desc.Format;
+	uav_desc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
+	uav_desc.Texture2DArray.ArraySize = num_snow_channels;
+	hr = device->CreateTexture2D(&tex_desc, 0, tex_array_snow.GetAddressOf());
+	assert(SUCCEEDED(hr));
+	hr = device->CreateUnorderedAccessView(tex_array_snow.Get(), &uav_desc, uav_tex_array_snow.GetAddressOf());
 	assert(SUCCEEDED(hr));
 
 	//创建控制点buffur
@@ -407,6 +928,14 @@ void Blizzard::bindResources()
 	ctx->IASetInputLayout(input_layout.Get());
 	ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 	ctx->IASetVertexBuffers(0, 1, vertex_buffer.GetAddressOf(), &stride, &offset);
+
+	//
+	ctx->CSSetUnorderedAccessViews(0, 1, uav_tex_array_wind.GetAddressOf(), 0);
+	ctx->CSSetUnorderedAccessViews(1, 1, uav_tex_array_snow.GetAddressOf(), 0);
+	ctx->CSSetUnorderedAccessViews(2, 1, uav_tex_display.GetAddressOf(), 0);
+	ctx->CSSetShaderResources(0, 1, srv_control_points.GetAddressOf());
+	ctx->CSSetConstantBuffers(0, 1, cbuf_num_control_points.GetAddressOf());
+	ctx->CSSetConstantBuffers(1, 1, cbuf_rand.GetAddressOf());
 }
 
 void Blizzard::updateControlPointBuffer()
@@ -414,13 +943,16 @@ void Blizzard::updateControlPointBuffer()
 	decltype(auto) ctx = dx11_wnd->GetImCtx();
 	HRESULT hr = NULL;
 	D3D11_MAPPED_SUBRESOURCE mapped_subresource = {};
-	hr = ctx->Map(buf_control_points.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_subresource);
-	assert(SUCCEEDED(hr));
-	ControlPoint* p_data = (ControlPoint*)mapped_subresource.pData;
-	const size_t n_data = control_points.size();
-	memcpy_s(p_data, max_num_control_points * sizeof ControlPoint,
-		&control_points[0], n_data * sizeof ControlPoint);
-	ctx->Unmap(buf_control_points.Get(), 0);
+	if (control_points.size() > 0)
+	{
+		hr = ctx->Map(buf_control_points.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_subresource);
+		assert(SUCCEEDED(hr));
+		ControlPoint* p_data = (ControlPoint*)mapped_subresource.pData;
+		const size_t n_data = control_points.size();
+		memcpy_s(p_data, max_num_control_points * sizeof ControlPoint,
+			&control_points[0], n_data * sizeof ControlPoint);
+		ctx->Unmap(buf_control_points.Get(), 0);
+	}
 	//
 	mapped_subresource = {};
 	hr = ctx->Map(cbuf_num_control_points.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_subresource);
@@ -434,32 +966,33 @@ void Blizzard::updateRandSeed()
 {
 	decltype(auto) ctx = dx11_wnd->GetImCtx();
 	HRESULT hr = NULL;
-	static unsigned int seed = 0;
-	srand(seed++);
+	static unsigned int seed = (unsigned int)time(NULL);
+	srand(seed);
 	D3D11_MAPPED_SUBRESOURCE mapped_subresource = {};
-	hr = ctx->Map(cbuf_num_control_points.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_subresource);
+	hr = ctx->Map(cbuf_rand.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_subresource);
 	assert(SUCCEEDED(hr));
-	float* p_num_control_points = (float*)mapped_subresource.pData;
-	*p_num_control_points = (float)rand() / RAND_MAX;
-	ctx->Unmap(cbuf_num_control_points.Get(), 0);
+	float* rand_seed = (float*)mapped_subresource.pData;
+	seed = rand();
+	*rand_seed = seed / (float)RAND_MAX;
+	ctx->Unmap(cbuf_rand.Get(), 0);
 }
 
 void Blizzard::setInputCallback()
 {
 	const auto onmousemove = [&](WPARAM wparam, LPARAM lparam) {
 		const POINTS p = MAKEPOINTS(lparam);
-		const XMFLOAT2 pos = { (float)p.x / 8,(float)p.y / 8 };
+		const XMFLOAT2 pos = { (float)p.x ,(float)p.y };
 		if (wparam & MK_SHIFT) {
-			addControlPoint(pos, { 2.f, 0.f });
+			addControlPoint(pos, { 15.f, 0.f });
 		}
 		else if (wparam & MK_LBUTTON) {
-			addControlPoint(pos, { 5.f,1.f });
+			addControlPoint(pos, { 50.f,1.f });
 		}
 		else if (wparam & MK_RBUTTON) {
-			addControlPoint(pos, { 5.f,2.f });
+			addControlPoint(pos, { 10.f,2.f });
 		}
 		else if (wparam & MK_MBUTTON) {
-			addControlPoint(pos, { 1.2f,3.f });
+			addControlPoint(pos, { 10.f, 3.f });
 		}
 
 		TRACKMOUSEEVENT track_mouse_event{};
