@@ -7,11 +7,14 @@
 ## 湍流
 
 ![capture1](/turbulent.gif)
+![capture2](/turbulent2.gif)
 
 ## 表面张力
 
-![capture2](/surfacetension.gif)
+![capture3](/surfacetension.gif)
+
 
 ## 油和水
 
-![capture3](/multicomponent.gif)
+![capture4](/multicomponent2.gif)
+
