@@ -276,7 +276,7 @@ void Blizzard::initShaders()
 			0, 3, 4, 1, 2, 7, 8, 5, 6
 		};
 
-		static const float tau = 0.501f;
+		static const float tau = .8f;
 		static const float k = 1.f/tau;
 
 		[numthreads(32, 32, 1)]

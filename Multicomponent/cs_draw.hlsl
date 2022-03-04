@@ -20,11 +20,11 @@ void main( uint3 DTid : SV_DispatchThreadID )
             else if (cp.data == 2.0)
             {
                 f_in[0][uint3(index.xy, 0)] = 0.f;
-                f_in[1][uint3(index.xy, 0)] = rho0[1] * 1.2f;
+                f_in[1][uint3(index.xy, 0)] = rho0[1] * 3.f;
             }
             else if (cp.data == 1.0)
             {
-                f_in[0][uint3(index.xy, 0)] = rho0[0] * 1.2f;
+                f_in[0][uint3(index.xy, 0)] = rho0[0] * 3.f;
                 f_in[1][uint3(index.xy, 0)] = 0.f;
             }
             else if (cp.data == 0.0)

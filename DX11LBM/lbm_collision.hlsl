@@ -55,10 +55,25 @@ void main(uint3 DTid : SV_DispatchThreadID)
     }
     
     float tau2 = tau + 0.5f * (-tau + sqrt(pow(tau, 2) + 1.62f * sqrt(p)));
+    float k = 1.f / tau2;
+    //float l = 1.f / (0.5f + 1.f / (4.f * (tau2 - 0.5f)));
+    
     
     [unroll(9)]
     for (i = 0; i < 9; i++)
     {
-        f_in[uint3(pos, i)] = (1.f - 1.f / tau2) * f[i] + 1.f / tau2 * eq[i];
+        //float f_p = (f[i] + f[8 - i]) * 0.5f;
+        //float f_n = (f[i] - f[8 - i]) * 0.5f;
+        //float f_eq_p = (eq[i] + eq[8 - i]) * 0.5f;
+        //float f_eq_n = (eq[i] - eq[8 - i]) * 0.5f;
+        //f_in[uint3(pos, i)] = f[i] - k * (f_p - f_eq_p) - 0.9f * (f_n - f_eq_n);
+        f[i] = (1.f - k) * f[i] + k * eq[i];//
+    }
+    
+        
+    [unroll(9)]
+    for (i = 0; i < 9; i++)
+    {
+        f_in[uint3(pos, i)] = f[i];
     }
 }

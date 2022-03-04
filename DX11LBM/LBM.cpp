@@ -444,12 +444,12 @@ void LBM::IMPL::update()
 	dispatch();
 
 	fence();
-	context->CSSetShader(cs_lbm_collision.Get(), 0, 0);
-	dispatch();
-
-	fence();
 	context->CSSetShader(cs_lbm_bundary.Get(), 0, 0);
 	context->Dispatch(2, 1, 1);
+
+	fence();
+	context->CSSetShader(cs_lbm_collision.Get(), 0, 0);
+	dispatch();
 
 	//Sleep(1); //ºı…Ÿcpu’º”√
 	//...

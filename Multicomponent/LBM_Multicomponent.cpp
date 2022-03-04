@@ -1,6 +1,8 @@
 #include "LBM_Multicomponent.h"
 #include <d3dcompiler.h>
 
+LBM_Multicomponent::LBM_Multicomponent(decltype(dx11_wnd) wnd) : dx11_wnd{ wnd }, last_control_point{ {-1.f,-1.f},{-1.f,-1.f}, }, display_setting{ 0,0,0,0 }, pause{ false }{}
+
 void LBM_Multicomponent::init_shaders()
 {
 	ComPtr<ID3DBlob> blob;
@@ -54,6 +56,17 @@ void LBM_Multicomponent::init_shaders()
 	assert(SUCCEEDED(hr));
 	hr = device->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs_lbm_moment_update.GetAddressOf());
 	assert(SUCCEEDED(hr));
+}
+
+void LBM_Multicomponent::update_displaysetting()
+{
+	decltype(auto) ctx = dx11_wnd->GetImCtx();
+	D3D11_MAPPED_SUBRESOURCE mapped_subresource = {};
+	HRESULT hr = ctx->Map(cbuf_display_setting.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_subresource);
+	assert(SUCCEEDED(hr));
+	DisplaySetting* p_data = (DisplaySetting*)mapped_subresource.pData;
+	*p_data = display_setting;
+	ctx->Unmap(cbuf_display_setting.Get(), 0);
 }
 
 void LBM_Multicomponent::update_control_point_buffer()
@@ -114,6 +127,7 @@ void LBM_Multicomponent::run()
 		handleInput();
 		update();
 		render();
+		//Sleep(1);
 	}
 }
 
@@ -125,9 +139,10 @@ void LBM_Multicomponent::init_resources()
 	D3D11_BUFFER_DESC buf_desc = {};
 	D3D11_UNORDERED_ACCESS_VIEW_DESC uav_desc = {};
 	D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
+	D3D11_SUBRESOURCE_DATA InitData = {};
 
-	tex_desc.Width = dx11_wnd->getWidth() / 4;
-	tex_desc.Height = dx11_wnd->getHeight() / 4;
+	tex_desc.Width = dx11_wnd->getWidth() / grid_size;
+	tex_desc.Height = dx11_wnd->getHeight() / grid_size;
 	tex_desc.ArraySize = 1;
 	tex_desc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 	tex_desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
@@ -151,8 +166,8 @@ void LBM_Multicomponent::init_resources()
 
 	//分别创建3个组分个粒子分布以及宏观量的存储
 	tex_desc = {};
-	tex_desc.Width = dx11_wnd->getWidth() / 4;
-	tex_desc.Height = dx11_wnd->getHeight() / 4;
+	tex_desc.Width = dx11_wnd->getWidth() / grid_size;
+	tex_desc.Height = dx11_wnd->getHeight() / grid_size;
 	tex_desc.ArraySize = num_f_channels;
 	tex_desc.Format = DXGI_FORMAT_R32_FLOAT;
 	tex_desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS;
@@ -209,6 +224,33 @@ void LBM_Multicomponent::init_resources()
 	buf_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 	hr = device->CreateBuffer(&buf_desc, nullptr, cbuf_num_control_points.GetAddressOf());
 	assert(SUCCEEDED(hr));
+
+	//创建cbuf_SimSetting
+	buf_desc = {};
+	buf_desc.Usage = D3D11_USAGE_IMMUTABLE;
+	buf_desc.ByteWidth = 16;
+	buf_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	buf_desc.CPUAccessFlags = 0;
+	SimSetting sim_setting = {
+		dx11_wnd->getWidth(),
+		dx11_wnd->getHeight(),
+		grid_size
+	};
+	InitData = {};
+	InitData.pSysMem = &sim_setting;
+	hr = device->CreateBuffer(&buf_desc, &InitData, cbuf_sim_setting.GetAddressOf());
+	assert(SUCCEEDED(hr));
+
+	//创建cbuf_SimSetting
+	buf_desc = {};
+	buf_desc.Usage = D3D11_USAGE_DYNAMIC;
+	buf_desc.ByteWidth = 16;
+	buf_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	buf_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	InitData = {};
+	InitData.pSysMem = &display_setting;
+	hr = device->CreateBuffer(&buf_desc, &InitData, cbuf_display_setting.GetAddressOf());
+	assert(SUCCEEDED(hr));
 }
 
 void LBM_Multicomponent::bind_resources()
@@ -247,7 +289,9 @@ void LBM_Multicomponent::bind_resources()
 	ctx->CSSetUnorderedAccessViews(5, 1, uav_tex_array_f_out[2].GetAddressOf(), 0);
 	ctx->CSSetUnorderedAccessViews(6, 1, uav_tex_display.GetAddressOf(), 0);
 	ctx->CSSetShaderResources(0, 1, srv_control_points.GetAddressOf());
-	ctx->CSSetConstantBuffers(0, 1, cbuf_num_control_points.GetAddressOf());
+	ctx->CSSetConstantBuffers(0, 1, cbuf_sim_setting.GetAddressOf());
+	ctx->CSSetConstantBuffers(1, 1, cbuf_num_control_points.GetAddressOf());
+	ctx->CSSetConstantBuffers(2, 1, cbuf_display_setting.GetAddressOf());
 	//ctx->PSSetShaderResources(0, 1, srv_tex_display.GetAddressOf());
 }
 
@@ -279,18 +323,18 @@ void LBM_Multicomponent::set_input_callback()
 {
 	const auto onmousemove = [&](WPARAM wparam, LPARAM lparam) {
 		const POINTS p = MAKEPOINTS(lparam);
-		const XMFLOAT2 pos = { (float)p.x / 4,(float)p.y / 4 };
+		const XMFLOAT2 pos = { (float)p.x / grid_size,(float)p.y / grid_size };
 		if (wparam & MK_SHIFT) {
-			add_control_point(pos, { 10.f, 0.f });
+			add_control_point(pos, { 30.f / grid_size, 0.f });
 		}
 		else if (wparam & MK_LBUTTON) {
-			add_control_point(pos, { 10.f,1.f });
+			add_control_point(pos, { 30.f / grid_size,1.f });
 		}
 		else if (wparam & MK_RBUTTON) {
-			add_control_point(pos, { 10.f,2.f });
+			add_control_point(pos, { 30.f / grid_size,2.f });
 		}
 		else if (wparam & MK_MBUTTON) {
-			add_control_point(pos, { 2.5f,3.f });
+			add_control_point(pos, { 20.f / grid_size,3.f });
 		}
 
 		TRACKMOUSEEVENT track_mouse_event{};
@@ -316,14 +360,55 @@ void LBM_Multicomponent::set_input_callback()
 	dx11_wnd->AddWndProc(WM_LBUTTONUP, onmousebtnupormouseleave);
 	dx11_wnd->AddWndProc(WM_RBUTTONUP, onmousebtnupormouseleave);
 	dx11_wnd->AddWndProc(WM_MBUTTONUP, onmousebtnupormouseleave);
+
+	dx11_wnd->AddWndProc(WM_KEYDOWN, [&](WPARAM wparam, LPARAM lparam) {
+		switch (wparam)
+		{
+		case 'A':
+		{
+			display_setting.show_air = display_setting.show_air ? 0u : 1u;
+			update_displaysetting();
+			break;
+		}
+		case 'C':
+		case 'S':
+		{
+			display_setting.velocitymode = display_setting.velocitymode ? 0u : 1u;
+			update_displaysetting();
+			break;
+		}
+		case 'F':
+		{
+			display_setting.forcemode = display_setting.forcemode ? 0u : 1u;
+			update_displaysetting();
+			break;
+		}
+		case 'V':
+		{
+			display_setting.vorticitymode = display_setting.vorticitymode ? 0u : 1u;
+			update_displaysetting();
+			break;
+		}
+		case VK_SPACE:
+		case 'P':
+		{
+			pause = !pause;
+			break;
+		}
+		default:
+			break;
+		}
+
+		return true;
+		});
 }
 
 void LBM_Multicomponent::update()
 {
 	decltype(auto) device = dx11_wnd->GetDevice();
 	decltype(auto) ctx = dx11_wnd->GetImCtx();
-	const int width = dx11_wnd->getWidth() / 4;
-	const int height = dx11_wnd->getHeight() / 4;
+	const int width = dx11_wnd->getWidth() / grid_size;
+	const int height = dx11_wnd->getHeight() / grid_size;
 	const UINT ThreadGroupCountX = (width - 1) / 32 + 1;
 	const UINT ThreadGroupCountY = (height - 1) / 32 + 1;
 	//应用控制点
@@ -336,20 +421,22 @@ void LBM_Multicomponent::update()
 		ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
 		fence();
 	}
-
 	fence();
 	ctx->CSSetShader(cs_lbm_moment_update.Get(), NULL, 0);
 	ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
 	fence();
-	ctx->CSSetShader(cs_lbm_force_calculation.Get(), NULL, 0);
-	ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
-	fence();
-	ctx->CSSetShader(cs_lbm_collision.Get(), NULL, 0);
-	ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
-	fence();
-	ctx->CSSetShader(cs_lbm_streaming.Get(), NULL, 0);
-	ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
-	fence();
+	if (!pause)
+	{
+		ctx->CSSetShader(cs_lbm_force_calculation.Get(), NULL, 0);
+		ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
+		fence();
+		ctx->CSSetShader(cs_lbm_collision.Get(), NULL, 0);
+		ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
+		fence();
+		ctx->CSSetShader(cs_lbm_streaming.Get(), NULL, 0);
+		ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
+		fence();
+	}
 	//显示
 	ctx->CSSetShader(cs_lbm_visualization.Get(), NULL, 0);
 	ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);

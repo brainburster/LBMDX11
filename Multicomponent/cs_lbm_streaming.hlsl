@@ -3,11 +3,12 @@
 
 bool is_wall(uint2 pos)
 {
-    if ( pos.y > (600 / 4 - 1) || pos.x > (800 / 4 - 1))
-    {
-        return true;
-    }
-    return uav_display[pos].w > 0.0f;
+    return (pos.y > (height / grid_size - 1) || pos.x > (width / grid_size - 1)) || (uav_display[pos].w > 0.0f);
+}
+
+bool is_wall2(uint2 pos, float rho, uint j)
+{
+    return rho < rho0[j] * 0.2f && f_out[j][uint3(pos, 9)] < rho0[j] * 0.2f;
 }
 
 [numthreads(32, 32, 1)]
@@ -25,17 +26,16 @@ void main( uint3 DTid : SV_DispatchThreadID )
     uint j = 0;
 
     bool flag1 = is_wall(pos);
-   
     
     [unroll]
     for (i = 1; i < 9; i++)
     {
         uint2 pos_2 = pos + c[oppo[i]];
         bool flag2 = is_wall(pos_2);
-            
         [unroll]
         for (j = 0; j < 3; j++)
         {
+            //bool flag3 = flag2 || is_wall2(pos_2, f_out[j][uint3(pos, 9)], j);
             if (flag1)
             {
                 f[j][i] = 0.0f;

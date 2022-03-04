@@ -3,7 +3,7 @@ Texture2D<float4> srv_display : register(t0);
 
 SamplerState srv_display_sampler
 {
-    Filter = MIN_MAG_MIP_LINEAR;
+    Filter = MIN_MAG_MIP_LINEAR; //MIN_MAG_MIP_LINEAR;
     AddressU = Wrap;
     AddressV = Wrap;
 };

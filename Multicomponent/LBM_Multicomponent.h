@@ -60,18 +60,42 @@ private:
 	ComPtr<ID3D11Buffer> cbuf_num_control_points;
 	ControlPoint last_control_point;
 
+	//模拟参数
+	struct SimSetting
+	{
+		unsigned int width;
+		unsigned int height;
+		unsigned int grid_size;
+	};
+
+	//显示参数
+	struct DisplaySetting
+	{
+		unsigned int show_air; //显示空气
+		unsigned int velocitymode; //显示速度
+		unsigned int vorticitymode; //显示涡量
+		unsigned int forcemode; //显示受力
+	} display_setting;
+
+	ComPtr<ID3D11Buffer> cbuf_sim_setting;
+	ComPtr<ID3D11Buffer> cbuf_display_setting;
+
 	enum
 	{
+		grid_size = 8,
 		num_f_channels = 12,
 		max_num_control_points = 128,
 	};
+
+	bool pause;
 public:
-	LBM_Multicomponent(decltype(dx11_wnd) wnd) : dx11_wnd{ wnd }, last_control_point{ {-1.f,-1.f},{-1.f,-1.f} }{}
+	LBM_Multicomponent(decltype(dx11_wnd) wnd);
 	void run();
 private:
 	void init();
 	void fence();
 	void update_control_point_buffer();
+	void update_displaysetting();
 	void update();
 	void render();
 	void handleInput() {}
