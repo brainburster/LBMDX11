@@ -1,4 +1,8 @@
-# LBM学习
+# LBM算法学习
+
+## shadertoy版本
+
+https://www.shadertoy.com/view/Nl2cRR
 
 ## 风传播雪
 
