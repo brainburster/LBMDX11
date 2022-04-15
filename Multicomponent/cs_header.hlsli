@@ -31,7 +31,7 @@ struct ControlPoint
 
 StructuredBuffer<ControlPoint> control_points : register(t0);
 
-static const float3 rho0 = { .0001f, 0.00001f, 0.0000001f };
+static const float3 rho0 = { .0001f, 0.00001f, 0.000001f };
 //static const int height = 1024;
 //static const int width = 1024;
 //static const int grid_size = 8;

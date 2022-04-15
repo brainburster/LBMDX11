@@ -1,4 +1,4 @@
-#include "LBM_Multicomponent.h"
+ï»¿#include "LBM_Multicomponent.h"
 #include <d3dcompiler.h>
 
 LBM_Multicomponent::LBM_Multicomponent(decltype(dx11_wnd) wnd) : dx11_wnd{ wnd }, last_control_point{ {-1.f,-1.f},{-1.f,-1.f}, }, display_setting{ 0,0,0,0 }, pause{ false }{}
@@ -8,15 +8,15 @@ void LBM_Multicomponent::init_shaders()
 	ComPtr<ID3DBlob> blob;
 	decltype(auto) device = dx11_wnd->GetDevice();
 	HRESULT hr = NULL;
-	//´´½¨VS shader
+	//åˆ›å»ºVS shader
 	hr = D3DReadFileToBlob(L"shaders/vs.cso", blob.ReleaseAndGetAddressOf());
 	assert(SUCCEEDED(hr));
 	hr = device->CreateVertexShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, vs.GetAddressOf());
 	assert(SUCCEEDED(hr));
-	//´´½¨ input_layout
+	//åˆ›å»º input_layout
 	hr = device->CreateInputLayout(VsIn::input_layout, VsIn::num_elements, blob->GetBufferPointer(), blob->GetBufferSize(), input_layout.GetAddressOf());
 	assert(SUCCEEDED(hr));
-	//´´½¨PS shader
+	//åˆ›å»ºPS shader
 	hr = D3DReadFileToBlob(L"shaders/ps.cso", blob.ReleaseAndGetAddressOf());
 	assert(SUCCEEDED(hr));
 	hr = device->CreatePixelShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, ps.GetAddressOf());
@@ -164,7 +164,7 @@ void LBM_Multicomponent::init_resources()
 	hr = device->CreateShaderResourceView(tex_display.Get(), &srv_desc, srv_tex_display.GetAddressOf());
 	assert(SUCCEEDED(hr));
 
-	//·Ö±ð´´½¨3¸ö×é·Ö¸öÁ£×Ó·Ö²¼ÒÔ¼°ºê¹ÛÁ¿µÄ´æ´¢
+	//åˆ†åˆ«åˆ›å»º3ä¸ªç»„åˆ†ä¸ªç²’å­åˆ†å¸ƒä»¥åŠå®è§‚é‡çš„å­˜å‚¨
 	tex_desc = {};
 	tex_desc.Width = dx11_wnd->getWidth() / grid_size;
 	tex_desc.Height = dx11_wnd->getHeight() / grid_size;
@@ -196,7 +196,7 @@ void LBM_Multicomponent::init_resources()
 
 	//...
 
-	//´´½¨¿ØÖÆµãbuffur
+	//åˆ›å»ºæŽ§åˆ¶ç‚¹buffur
 	buf_desc = {};
 	buf_desc.ByteWidth = sizeof(ControlPoint) * max_num_control_points;
 	buf_desc.Usage = D3D11_USAGE_DYNAMIC;
@@ -216,7 +216,7 @@ void LBM_Multicomponent::init_resources()
 	hr = device->CreateShaderResourceView(buf_control_points.Get(), &srv_desc, srv_control_points.GetAddressOf());
 	assert(SUCCEEDED(hr));
 
-	//´´½¨cbuf_num_control_points
+	//åˆ›å»ºcbuf_num_control_points
 	buf_desc = {};
 	buf_desc.Usage = D3D11_USAGE_DYNAMIC;
 	buf_desc.ByteWidth = 16;
@@ -225,7 +225,7 @@ void LBM_Multicomponent::init_resources()
 	hr = device->CreateBuffer(&buf_desc, nullptr, cbuf_num_control_points.GetAddressOf());
 	assert(SUCCEEDED(hr));
 
-	//´´½¨cbuf_SimSetting
+	//åˆ›å»ºcbuf_SimSetting
 	buf_desc = {};
 	buf_desc.Usage = D3D11_USAGE_IMMUTABLE;
 	buf_desc.ByteWidth = 16;
@@ -241,7 +241,7 @@ void LBM_Multicomponent::init_resources()
 	hr = device->CreateBuffer(&buf_desc, &InitData, cbuf_sim_setting.GetAddressOf());
 	assert(SUCCEEDED(hr));
 
-	//´´½¨cbuf_SimSetting
+	//åˆ›å»ºcbuf_SimSetting
 	buf_desc = {};
 	buf_desc.Usage = D3D11_USAGE_DYNAMIC;
 	buf_desc.ByteWidth = 16;
@@ -258,7 +258,7 @@ void LBM_Multicomponent::bind_resources()
 	decltype(auto) device = dx11_wnd->GetDevice();
 	decltype(auto) ctx = dx11_wnd->GetImCtx();
 
-	//´´½¨ vertices_buffer
+	//åˆ›å»º vertices_buffer
 	HRESULT hr = NULL;
 	D3D11_BUFFER_DESC vbd{};
 	vbd.Usage = D3D11_USAGE_IMMUTABLE;
@@ -272,7 +272,7 @@ void LBM_Multicomponent::bind_resources()
 	hr = device->CreateBuffer(&vbd, &sd, vertex_buffer.GetAddressOf());
 	assert(SUCCEEDED(hr));
 
-	//ÉèÖÃ input_layout
+	//è®¾ç½® input_layout
 	UINT stride = sizeof(VsIn);
 	UINT offset = 0;
 	ctx->IASetInputLayout(input_layout.Get());
@@ -411,7 +411,7 @@ void LBM_Multicomponent::update()
 	const int height = dx11_wnd->getHeight() / grid_size;
 	const UINT ThreadGroupCountX = (width - 1) / 32 + 1;
 	const UINT ThreadGroupCountY = (height - 1) / 32 + 1;
-	//Ó¦ÓÃ¿ØÖÆµã
+	//åº”ç”¨æŽ§åˆ¶ç‚¹
 	if (control_points.size() > 0)
 	{
 		fence();
@@ -437,7 +437,7 @@ void LBM_Multicomponent::update()
 		ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
 		fence();
 	}
-	//ÏÔÊ¾
+	//æ˜¾ç¤º
 	ctx->CSSetShader(cs_lbm_visualization.Get(), NULL, 0);
 	ctx->Dispatch(ThreadGroupCountX, ThreadGroupCountY, 1);
 	fence();
@@ -450,12 +450,12 @@ void LBM_Multicomponent::render()
 	ctx->ClearRenderTargetView(dx11_wnd->GetRTV(), back_color);
 	ctx->ClearDepthStencilView(dx11_wnd->GetDsv(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.f, 0);
 
-	//½â¾öÍ¬Ò»¸ö×ÊÔ´Í¬Ê±°ó¶¨srvºÍuavµÄ³åÍ»
+	//è§£å†³åŒä¸€ä¸ªèµ„æºåŒæ—¶ç»‘å®šsrvå’Œuavçš„å†²çª
 	ID3D11ShaderResourceView* null_srv = nullptr;
 	ID3D11UnorderedAccessView* null_uav = nullptr;
 	ctx->CSSetUnorderedAccessViews(6, 1, &null_uav, 0);
 	ctx->PSSetShaderResources(0, 1, srv_tex_display.GetAddressOf());
-	//»æÖÆ
+	//ç»˜åˆ¶
 	ctx->Draw(4, 0);
 	ctx->CSSetUnorderedAccessViews(6, 1, uav_tex_display.GetAddressOf(), 0);
 	ctx->PSSetShaderResources(0, 1, &null_srv);

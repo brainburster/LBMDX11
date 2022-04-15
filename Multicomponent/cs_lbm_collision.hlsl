@@ -1,7 +1,7 @@
 #include "cs_header.hlsli"
 #include "cs_lbm_header.hlsli"
 
-static const float k[3] = { 1.2f, 1.2f, 1.2f };
+static const float k[3] = { 1.6f, 1.1f, 1.8f };
 
 [numthreads(32, 32, 1)]
 void main(uint3 DTid : SV_DispatchThreadID)
@@ -21,7 +21,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
             float2 u = float2(
                 f_in[j][uint3(pos, 10)],
                 f_in[j][uint3(pos, 11)]
-            ) * 0.99f;
+            ) /** 0.99f*/;
             float2 F_ext = float2(
                 f_out[j][uint3(pos, 10)],
                 f_out[j][uint3(pos, 11)]
@@ -33,7 +33,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
                 f[i] = f_in[j][uint3(pos, i)];
             }
 
-            F_ext += float2(0.f, 0.01f) * rho;
+            F_ext += float2(0.f, 0.005f) * rho;
         
             float2 a = F_ext / rho;
         

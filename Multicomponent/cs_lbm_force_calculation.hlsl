@@ -38,9 +38,9 @@ static const float w4[6] =
 
 static const float4x4 G =
 {
-    -80000.f, 1000.f, 1e2f, -8.f,
-    10000.f, -7500.f, 1e2f, -0.7f,
-    1e6f, 1e6f, -0.0f, 0.f,
+    -50000.f, 100000.f, 1e5f, -3.f,
+    100000.f, -500000.f, 1e5f, -5.f,
+    1e5f, 1e5f, 1.f, 0.f,
      0, 0, 0, 0,
 };
 
