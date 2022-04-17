@@ -1,4 +1,4 @@
-#include <windows.h>
+﻿#include <windows.h>
 #include <d3d11.h>
 #include <tuple>
 #include <stdexcept>
@@ -137,12 +137,11 @@ void msgLoop(std::function<void()> update)
 
 	while (WM_QUIT != msg.message)
 	{
-		if (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE))
+		while (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE))
 		{
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
-		//	update();
 	}
 
 	stop = true;

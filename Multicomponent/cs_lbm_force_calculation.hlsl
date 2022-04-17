@@ -38,9 +38,9 @@ static const float w4[6] =
 
 static const float4x4 G =
 {
-    -50000.f, 100000.f, 1e5f, -3.f,
-    100000.f, -500000.f, 1e5f, -5.f,
-    1e5f, 1e5f, 1.f, 0.f,
+    -6.f, 8.f, 1e3f, -4.f,
+    8.f, -60.f, 2e3f, -4.f,
+    1e3f, 2e3f, 0.1f, 0.f,
      0, 0, 0, 0,
 };
 
@@ -77,7 +77,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
         //    F += (G[j][0] * _psi0 + G[j][1] * _psi1 + G[j][2] * _psi2 + G[j][3] * _psi3)
         //    * c2[i] * w4[c2[i].x * c2[i].x + c2[i].y * c2[i].y] * 0.6f;
         //}
-        F *= -psi /** sign(psi)*/;
+        F *= -psi;
         f_out[j][uint3(pos, 10)] = F.x;
         f_out[j][uint3(pos, 11)] = F.y;
     }

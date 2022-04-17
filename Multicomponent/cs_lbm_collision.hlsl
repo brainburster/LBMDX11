@@ -1,7 +1,7 @@
 #include "cs_header.hlsli"
 #include "cs_lbm_header.hlsli"
 
-static const float k[3] = { 1.6f, 1.1f, 1.8f };
+static const float k[3] = { 1.4f, 1.2f, 1.2f };
 
 [numthreads(32, 32, 1)]
 void main(uint3 DTid : SV_DispatchThreadID)
@@ -21,7 +21,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
             float2 u = float2(
                 f_in[j][uint3(pos, 10)],
                 f_in[j][uint3(pos, 11)]
-            ) /** 0.99f*/;
+            ) /** 0.999f*/;
             float2 F_ext = float2(
                 f_out[j][uint3(pos, 10)],
                 f_out[j][uint3(pos, 11)]
@@ -33,14 +33,16 @@ void main(uint3 DTid : SV_DispatchThreadID)
                 f[i] = f_in[j][uint3(pos, i)];
             }
 
-            F_ext += float2(0.f, 0.005f) * rho;
+            F_ext += float2(0.f, 0.002f) * rho;
         
             float2 a = F_ext / rho;
         
-            //float2 v = u + a * 0.5f;
+            //float2 v = u + a * 0.25f;
             float2 v = u + a;
         
             float max_speed = .57735027f;
+            //float max_speed = .57f;
+            
         
             if (length(v) > max_speed)
             {
@@ -51,8 +53,8 @@ void main(uint3 DTid : SV_DispatchThreadID)
                 u = normalize(u) * max_speed;
             }
             
-            a = (v - u) * 2.f;
-            F_ext = a * rho;
+            //a = (v - u) * 2.f;
+            //F_ext = a * rho;
         
             float u_sqr = 1.5f * dot(u, u);
             float v_sqr = 1.5f * dot(v, v);

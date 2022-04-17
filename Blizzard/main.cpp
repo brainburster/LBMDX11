@@ -1,4 +1,4 @@
-#include "Blizzard.h"
+ï»¿#include "Blizzard.h"
 
 #pragma comment(lib,"d3d11.lib")
 #pragma comment(lib,"d3dcompiler.lib")
@@ -10,13 +10,10 @@ int main()
 	auto wnd = std::make_shared<DX11_Wnd>(hinst);
 	wnd->Size(800, 600)
 		.WndClassName(L"Cls_LBM_Multicomponent")
-		.WndName(L"±©·çÑ©")
+		.WndName(L"æš´é£Žé›ª")
 		.RemoveWndStyle(WS_MAXIMIZEBOX)
-		.Init()
-		.AddWndProc(WM_CLOSE, [&wnd](auto, auto) {
-		wnd->Abort();
-		return true;
-			});
+		.Init();
+
 	Blizzard lbm_program = { wnd };
 	lbm_program.run();
 	return 0;
@@ -27,13 +24,10 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPreInstance, _I
 	auto wnd = std::make_shared<DX11_Wnd>(hInstance);
 	wnd->Size(800, 600)
 		.WndClassName(L"Cls_LBM_Multicomponent")
-		.WndName(L"±©·çÑ©")
+		.WndName(L"æš´é£Žé›ª")
 		.RemoveWndStyle(WS_MAXIMIZEBOX)
-		.Init()
-		.AddWndProc(WM_CLOSE, [&wnd](auto, auto) {
-		wnd->Abort();
-		return true;
-			});
+		.Init();
+
 	Blizzard lbm_program = { wnd };
 	lbm_program.run();
 	return 0;

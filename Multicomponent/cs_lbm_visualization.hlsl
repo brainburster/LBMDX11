@@ -38,12 +38,12 @@ void main( uint3 DTid : SV_DispatchThreadID )
     float du_xdy = (u_d_x - u_u_x) / 2;
     float vorticity = du_ydx - du_xdy;
     
-    uav_display[pos] = float4(vorticitymode ? vorticity * 10 : (rho0 * 1000.f),
+    uav_display[pos] = float4(vorticitymode ? vorticity * 2.f : (rho0),
     //-(rho0 + rho1) * 500000.f +
     show_air * (rho2 * 100.f) +
     velocitymode * (u.x + u.y) * 0.5f +
-    forcemode * (F.x * 1e3f + F.y * 1e4f) +
+    forcemode * (F.x*0.5f + F.y) +
     0,
-    vorticitymode ? -vorticity*10 : (rho1 * 10000.f),
+    vorticitymode ? -vorticity*2.f : (rho1 * 10.f),
     uav_display[pos].w);
 }

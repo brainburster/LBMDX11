@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 
 #include "dx11_wnd.hpp"
 #include <memory>
@@ -24,31 +24,31 @@ private:
 		{ XMFLOAT2{-1.f,-1.f}, XMFLOAT2{0.f,1.f} },
 		{ XMFLOAT2{1.f, -1.f}, XMFLOAT2{1.f,1.f} },
 	};
-	//×ÅÉ«Æ÷
+	//ç€è‰²å™¨
 	ComPtr<ID3D11Buffer> vertex_buffer;
 	ComPtr<ID3D11InputLayout> input_layout;
 	ComPtr<ID3D11VertexShader> vs;
 	ComPtr<ID3D11PixelShader> ps;
-	//¸ù¾İ¿ØÖÆµãÉú³ÉÁ÷ÌåÓëÇ½
+	//æ ¹æ®æ§åˆ¶ç‚¹ç”Ÿæˆæµä½“ä¸å¢™
 	ComPtr<ID3D11ComputeShader> cs_draw;
-	//shan-chenÄ£ĞÍ
+	//shan-chenæ¨¡å‹
 	ComPtr<ID3D11ComputeShader> cs_lbm_init;
 	ComPtr<ID3D11ComputeShader> cs_lbm_moment_update;
 	ComPtr<ID3D11ComputeShader> cs_lbm_force_calculation;
 	ComPtr<ID3D11ComputeShader> cs_lbm_collision;
 	ComPtr<ID3D11ComputeShader> cs_lbm_streaming;
 	ComPtr<ID3D11ComputeShader> cs_lbm_visualization;
-	//´¢´æ2¸ö×é·ÖµÄ·Ö²¼ÒÔ¼°ÆäËûÎïÀíÁ¿Èçrho,u,psi(ÓĞĞ§ÃÜ¶È),F_k,
+	//å‚¨å­˜2ä¸ªç»„åˆ†çš„åˆ†å¸ƒä»¥åŠå…¶ä»–ç‰©ç†é‡å¦‚rho,u,psi(æœ‰æ•ˆå¯†åº¦),F_k,
 	ComPtr<ID3D11Texture2D> tex_array_f_in[3];
 	ComPtr<ID3D11Texture2D> tex_array_f_out[3];
 	ComPtr<ID3D11UnorderedAccessView> uav_tex_array_f_in[3];
 	ComPtr<ID3D11UnorderedAccessView> uav_tex_array_f_out[3];
-	//4¸öÍ¨µÀ·Ö±ğ±íÊ¾²»Í¬×é·ÖµÄÃÜ¶È£¬µÚ4¸öÍ¨µÀ<0±íÊ¾Ç½
+	//4ä¸ªé€šé“åˆ†åˆ«è¡¨ç¤ºä¸åŒç»„åˆ†çš„å¯†åº¦ï¼Œç¬¬4ä¸ªé€šé“<0è¡¨ç¤ºå¢™
 	ComPtr<ID3D11Texture2D> tex_display;
 	ComPtr<ID3D11UnorderedAccessView> uav_tex_display;
 	ComPtr<ID3D11ShaderResourceView> srv_tex_display;
 
-	//¿ØÖÆµã ÓÃÓÚÉú³ÉÁ÷ÌåÒÔ¼°Ç½
+	//æ§åˆ¶ç‚¹ ç”¨äºç”Ÿæˆæµä½“ä»¥åŠå¢™
 	struct ControlPoint
 	{
 		XMFLOAT2 pos;
@@ -60,7 +60,7 @@ private:
 	ComPtr<ID3D11Buffer> cbuf_num_control_points;
 	ControlPoint last_control_point;
 
-	//Ä£Äâ²ÎÊı
+	//æ¨¡æ‹Ÿå‚æ•°
 	struct SimSetting
 	{
 		unsigned int width;
@@ -68,13 +68,13 @@ private:
 		unsigned int grid_size;
 	};
 
-	//ÏÔÊ¾²ÎÊı
+	//æ˜¾ç¤ºå‚æ•°
 	struct DisplaySetting
 	{
-		unsigned int show_air; //ÏÔÊ¾¿ÕÆø
-		unsigned int velocitymode; //ÏÔÊ¾ËÙ¶È
-		unsigned int vorticitymode; //ÏÔÊ¾ÎĞÁ¿
-		unsigned int forcemode; //ÏÔÊ¾ÊÜÁ¦
+		unsigned int show_air; //æ˜¾ç¤ºç©ºæ°”
+		unsigned int velocitymode; //æ˜¾ç¤ºé€Ÿåº¦
+		unsigned int vorticitymode; //æ˜¾ç¤ºæ¶¡é‡
+		unsigned int forcemode; //æ˜¾ç¤ºå—åŠ›
 	} display_setting;
 
 	ComPtr<ID3D11Buffer> cbuf_sim_setting;
@@ -82,7 +82,7 @@ private:
 
 	enum
 	{
-		grid_size = 8,
+		grid_size = 5,
 		num_f_channels = 12,
 		max_num_control_points = 128,
 	};
