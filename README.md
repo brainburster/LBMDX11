@@ -2,23 +2,25 @@
 
 ## shadertoy版本
 
-https://www.shadertoy.com/view/Nl2cRR
+<https://www.shadertoy.com/view/Nl2cRR>
 
 ## 风传播雪
 
-![capture1](/snow.gif)
+![capture1](/picture/snow.png)
+![capture1](/picture/snow.gif)
 
 ## 湍流
 
-![capture1](/turbulent.gif)
-![capture2](/turbulent2.gif)
+![capture2](/picture/turbulent.png)
+![capture2](/picture/turbulent.gif)
+![capture3](/picture/turbulent2.gif)
 
 ## 表面张力
 
-![capture3](/surfacetension.gif)
-
+![capture4](/picture/surfacetension.png)
+![capture4](/picture/surfacetension.gif)
 
 ## 油和水
 
-![capture4](/multicomponent2.gif)
-
+![capture5](/picture/multicomponent.png)
+![capture5](/picture/multicomponent.gif)
