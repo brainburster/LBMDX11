@@ -85,6 +85,7 @@ private:
 		grid_size = 5,
 		num_f_channels = 12,
 		max_num_control_points = 128,
+		brush_size = 1
 	};
 
 	bool pause;

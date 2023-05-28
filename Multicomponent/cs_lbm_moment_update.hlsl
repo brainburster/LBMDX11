@@ -2,7 +2,7 @@
 #include "cs_lbm_header.hlsli"
 
 [numthreads(32, 32, 1)]
-void main( uint3 DTid : SV_DispatchThreadID )
+void main(uint3 DTid : SV_DispatchThreadID)
 {
     const uint2 pos = DTid.xy;
 
@@ -30,7 +30,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
         
         rho = f[0] + f[1] + f[2] + f[3] + f[4] + f[5] + f[6] + f[7] + f[8];
         u = rho ? u / rho : 0;
-        psi = sign(rho) * rho0[j] * (1.f - exp(-abs(rho) / rho0[j]) - (j == 2 ? 0. : clamp(0.01f * (pow(abs(rho) / rho0[j], 2) - 1.f), 0.f, 1.f)));
+        psi = sign(rho) * rho0[j] * (1.f - exp(-abs(rho) / rho0[j]) - (j == 2 ? 0. : clamp(0.1f * (abs(rho) / rho0[j] - 1.f), 0.f, 1.f)));
         //psi = sign(rho) * rho0[j]  * (1.f - exp(-abs(rho) / rho0[j]));
         //psi = rho0[j]  * (1.f - exp(-rho / rho0[j]));
         

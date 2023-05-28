@@ -38,26 +38,29 @@ void main(uint3 DTid : SV_DispatchThreadID)
         float cu = 3.f * dot(u, c[i]);
         eq[i] = rho * w[i] * (1.f + cu + 0.5f * cu * cu - usqr);
     }
-
-    float p = 0.f;
+    
+    float s = 0.f;
+    float2x2 S;
     [unroll(2)]
-    for (uint a = 0; a < 2; a++)
+    for (uint aa = 0; aa < 2; aa++)
     {
         [unroll(2)]
-        for (uint b = 0; b < 2; b++)
+        for (uint bb = 0; bb < 2; bb++)
         {
+            s = 0.f;
             [unroll(9)]
             for (i = 0; i < 9; i++)
             {
-                p += pow(c[i][a] * c[i][b] * (f[i] - eq[i]), 2);
+                s += c[i][aa] * c[i][bb] * (f[i] - eq[i]);
             }
+            S[aa][bb] = s;
         }
     }
     
-    float tau2 = tau + 0.5f * (-tau + sqrt(pow(tau, 2) + 1.62f * sqrt(p)));
+    s = S[0][0] * S[0][0] + 2 * S[0][1] * S[1][0] + S[1][1] * S[1][1];
+            
+    float tau2 = tau + 0.5f * (-tau + sqrt(pow(tau, 2) + 1.62f * sqrt(s)));
     float k = 1.f / tau2;
-    //float l = 1.f / (0.5f + 1.f / (4.f * (tau2 - 0.5f)));
-    
     
     [unroll(9)]
     for (i = 0; i < 9; i++)
@@ -67,7 +70,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
         //float f_eq_p = (eq[i] + eq[8 - i]) * 0.5f;
         //float f_eq_n = (eq[i] - eq[8 - i]) * 0.5f;
         //f_in[uint3(pos, i)] = f[i] - k * (f_p - f_eq_p) - 0.9f * (f_n - f_eq_n);
-        f[i] = (1.f - k) * f[i] + k * eq[i];//
+        f[i] = (1.f - k) * f[i] + k * eq[i]; //
     }
     
         

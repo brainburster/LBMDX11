@@ -1,7 +1,8 @@
 #include "cs_header.hlsli"
 #include "cs_lbm_header.hlsli"
 
-static const float k[3] = { 1.4f, 1.2f, 1.2f };
+static const float k[3] = { 1.6f, 1.2f, 1.8f };
+#define SpeedDumping(vel, k) (vel * exp(-k * length(vel)))
 
 [numthreads(32, 32, 1)]
 void main(uint3 DTid : SV_DispatchThreadID)
@@ -37,12 +38,11 @@ void main(uint3 DTid : SV_DispatchThreadID)
         
             float2 a = F_ext / rho;
         
-            //float2 v = u + a * 0.25f;
+            //float2 v = u + a * 0.5f;
             float2 v = u + a;
-        
-            float max_speed = .57735027f;
-            //float max_speed = .57f;
-            
+
+            v = SpeedDumping(v, 1e-5);
+            float max_speed = .57;
         
             if (length(v) > max_speed)
             {
@@ -56,18 +56,52 @@ void main(uint3 DTid : SV_DispatchThreadID)
             //a = (v - u) * 2.f;
             //F_ext = a * rho;
         
+            float f_eq[9];
             float u_sqr = 1.5f * dot(u, u);
-            float v_sqr = 1.5f * dot(v, v);
-            const float l = 1.f - k[j];
             [unroll]
             for (i = 0; i < 9; i++)
             {
                 float cu = 3.f * dot(c[i], u);
                 float cv = 3.f * dot(c[i], v);
             
-                float f_eq = rho * w[i] * (1.0f + cu - u_sqr + 0.5f * cu * cu);
+                f_eq[i] = rho * w[i] * (1.0f + cu - u_sqr + 0.5f * cu * cu);
+            }
+
+            float s = 0.f;
+            float2x2 S;
+            [unroll(2)]
+            for (uint _a = 0; _a < 2; _a++)
+            {
+                [unroll(2)]
+                for (uint _b = 0; _b < 2; _b++)
+                {
+                    s = 0.f;
+                    [unroll(9)]
+                    for (i = 0; i < 9; i++)
+                    {
+                        s += c[i][_a] * c[i][_b] * (f[i] - f_eq[i]);
+                    }
+                    S[_a][_b] = s;
+                }
+            }
+    
+            s = S[0][0] * S[0][0] + 2 * S[0][1] * S[1][0] + S[1][1] * S[1][1];
+            
+            float tau2 = 1. / k[j] + 0.5f * (-1. / k[j] + sqrt(pow(1. / k[j], 2) + 1.62f * sqrt(s)));
+            float k2 = 1.f / tau2;
+
+            float v_sqr = 1.5f * dot(v, v);
+            //const float l = 1.f - k[j];
+            const float l = 1.f - k2;
+            [unroll]
+            for (i = 0; i < 9; i++)
+            {
+                float cu = 3.f * dot(c[i], u);
+                float cv = 3.f * dot(c[i], v);
+            
+                //float f_eq = rho * w[i] * (1.0f + cu - u_sqr + 0.5f * cu * cu);
                 float f_eq2 = rho * w[i] * (1.0f + cv - v_sqr + 0.5f * cv * cv);
-                f[i] = l * (f[i] - f_eq) + f_eq2;
+                f[i] = l * (f[i] - f_eq[i]) + f_eq2;
                 //f[i] = (1.f - k[j]) * f[i] + k[j] * f_eq2;
                 //f[i] = f_eq2;
             }

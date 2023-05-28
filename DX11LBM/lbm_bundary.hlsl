@@ -1,9 +1,10 @@
 #include "header.hlsli"
 
 [numthreads(1, 599, 1)]
-void main( uint3 DTid : SV_DispatchThreadID )
+void main(uint3 DTid : SV_DispatchThreadID)
 {
-    const uint2 pos ={
+    const uint2 pos =
+    {
         DTid.x ? 799 : 0,
         DTid.y
     };
@@ -29,7 +30,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
             u += f_i * c[i];
         }
         u /= rho + 1e-20f;
-        float a = u.x < 0.02f ? 1e-6f : 0;
+        float a = u.x < 0.5f ? 1e-6f : 0;
         f_out[uint3(pos, 0)] = f_out[uint3(pos2, 0)] + a;
         f_out[uint3(pos, 1)] = f_out[uint3(pos2, 1)] + a;
         f_out[uint3(pos, 2)] = f_out[uint3(pos2, 2)] + a;
